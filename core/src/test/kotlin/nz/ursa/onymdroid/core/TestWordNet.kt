@@ -16,11 +16,14 @@ import java.nio.file.Files
 internal object TestWordNet {
     private val dataDir: String = System.getProperty("onym.wordnet.dir", "/usr/share/wordnet")
 
-    val available: Boolean get() = File(dataDir, "index.noun").exists()
+    /** The read-only system database directory, for components that only read it (like the lemma index). */
+    val directory: File get() = File(dataDir)
+
+    val available: Boolean get() = File(directory, "index.noun").exists()
 
     fun openDictionary(): Dictionary {
         val work = Files.createTempDirectory("onym-wordnet").toFile()
-        File(dataDir).listFiles()?.forEach { file ->
+        directory.listFiles()?.forEach { file ->
             if (file.isFile) file.copyTo(File(work, file.name), overwrite = true)
         }
         File(work, "cntlist").createNewFile()

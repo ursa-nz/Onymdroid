@@ -31,4 +31,15 @@ tasks.withType<Test>().configureEach {
     useJUnit()
     // Point the reader at a WordNet database for tests; defaults to the system install.
     systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+    // The onym-cli golden oracle, a sibling checkout's build; the parity test skips if it is absent.
+    systemProperty(
+        "onym.cli",
+        providers
+            .systemProperty("onym.cli")
+            .getOrElse(
+                rootProject.layout.projectDirectory
+                    .file("../onym/_build/tools/onym-cli")
+                    .asFile.absolutePath,
+            ),
+    )
 }

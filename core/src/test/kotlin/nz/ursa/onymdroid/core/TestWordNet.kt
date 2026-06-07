@@ -21,14 +21,17 @@ internal object TestWordNet {
 
     val available: Boolean get() = File(directory, "index.noun").exists()
 
-    fun openDictionary(): Dictionary {
+    /** A fresh writable copy of the database, with the empty cntlist extJWNL expects. */
+    fun preparedDir(): File {
         val work = Files.createTempDirectory("onym-wordnet").toFile()
         directory.listFiles()?.forEach { file ->
             if (file.isFile) file.copyTo(File(work, file.name), overwrite = true)
         }
         File(work, "cntlist").createNewFile()
-        return Dictionary.getFileBackedInstance(work.absolutePath)
+        return work
     }
+
+    fun openDictionary(): Dictionary = Dictionary.getFileBackedInstance(preparedDir().absolutePath)
 
     fun openSource(): WordNetSource = ExtjwnlWordNetSource(openDictionary())
 }

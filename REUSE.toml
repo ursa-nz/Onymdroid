@@ -15,3 +15,11 @@ path = [
 precedence = "override"
 SPDX-FileCopyrightText = "Gradle, Inc."
 SPDX-License-Identifier = "Apache-2.0"
+
+# The bundled WordNet 3.0 lexical database from Princeton University, redistributed under the
+# permissive WordNet licence. Declared here because the data files carry no inline header.
+[[annotations]]
+path = "app/src/main/assets/wordnet/**"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2006 Princeton University"
+SPDX-License-Identifier = "LicenseRef-WordNet"

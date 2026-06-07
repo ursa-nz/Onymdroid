@@ -1,0 +1,17 @@
+# SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+version = 1
+
+# The Gradle wrapper ships with the project but is Gradle's own code, kept verbatim. Its
+# licence is declared here rather than by editing the files, so it stays upstream-identical.
+[[annotations]]
+path = [
+    "gradle/wrapper/gradle-wrapper.jar",
+    "gradle/wrapper/gradle-wrapper.properties",
+    "gradlew",
+    "gradlew.bat",
+]
+precedence = "override"
+SPDX-FileCopyrightText = "Gradle, Inc."
+SPDX-License-Identifier = "Apache-2.0"

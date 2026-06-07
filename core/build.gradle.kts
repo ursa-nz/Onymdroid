@@ -18,3 +18,17 @@ kotlin {
         jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
 }
+
+dependencies {
+    // extJWNL is the WordNet reader, sealed behind the WordNetSource adapter; nothing outside
+    // the adapter implementation may import it.
+    implementation(libs.extjwnl)
+
+    testImplementation(libs.junit)
+}
+
+tasks.withType<Test>().configureEach {
+    useJUnit()
+    // Point the reader at a WordNet database for tests; defaults to the system install.
+    systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+}

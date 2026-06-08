@@ -3,7 +3,18 @@
 SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
 SPDX-License-Identifier: GPL-3.0-or-later
 -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- AndroidX declares and holds a private signature permission for its own internal
+         not-exported broadcast receiver. The app needs neither, so strip both and ship
+         with no permissions in the manifest at all. -->
+    <permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
+    <uses-permission
+        android:name="${applicationId}.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        tools:node="remove" />
 
     <application
         android:allowBackup="true"

@@ -111,23 +111,17 @@ internal class WordNetLookup(
         return Gathered(senses, lemmas)
     }
 
-    /** A getindex variant that resolved: its lemma and the senses it contributes after offset de-dup. */
-    private class Variant(
-        val lemma: String,
-        val senses: List<Sense>,
-    )
-
     /**
      * Search [form] in [pos] through its WordNet getindex variants, adding each resolved variant's
      * lemma to [lemmas] and its senses to [senses] (offset-deduplicated across variants, as Onym's
      * populate does).
      *
-     * One quirk of the WordNet C library is reproduced here. populate, while building a noun's part-of
-     * / parts tree, calls is_defined, which shares getindex's static iteration state and so cuts short
-     * populate's own walk over the remaining variants. The upshot is that a noun carrying meronyms or
-     * holonyms only ever sees its first getindex variant — which is why "shore bird" keeps "shorebird"
-     * as a synonym (the shorebird variant is never reached to claim it as a lemma) while "ash bin",
-     * having no such tree, suppresses ash-bin and ashbin. The oracle does this, so the engine must.
+     * Every resolving variant is always visited. This is fix 1 of the onym-engine spec's deliberate
+     * fixes: the WordNet C library's populate, while building a noun's part-of / parts tree, calls
+     * is_defined, which shares getindex's static iteration state and cuts short populate's own walk
+     * over the remaining variants, so a noun carrying meronyms or holonyms only ever saw its first
+     * variant. That is why "shore bird" used to keep "shorebird" as a synonym while "ash bin"
+     * suppressed ash-bin and ashbin. Variant suppression now behaves uniformly for every word.
      */
     private fun gather(
         form: String,
@@ -136,43 +130,16 @@ internal class WordNetLookup(
         lemmas: MutableSet<String>,
     ) {
         val seenOffsets = HashSet<Long>()
-        val variants = ArrayList<Variant>()
         for (variant in indexVariants(form)) {
             val variantSenses = source.sensesOf(variant, pos)
             if (variantSenses.isEmpty()) continue
-            val kept =
+            lemmas.add(displayLower(variant))
+            senses.addAll(
                 variantSenses
                     .filter { seenOffsets.add(it.offset) }
-                    .map { Sense(variant, pos, it, whichWord(it, variant)) }
-            variants.add(Variant(displayLower(variant), kept))
+                    .map { Sense(variant, pos, it, whichWord(it, variant)) },
+            )
         }
-
-        val truncate = pos == WnPos.NOUN && variants.isNotEmpty() && nounHasMeronymOrHolonym(variants.flatMap { it.senses })
-        val effective = if (truncate) variants.take(1) else variants
-        for (variant in effective) {
-            lemmas.add(variant.lemma)
-            senses.addAll(variant.senses)
-        }
-    }
-
-    /**
-     * Whether a noun's senses give it a Part of / Parts tree, i.e. any sense carries a meronym or
-     * holonym pointer, or inherits one through an immediate hypernym (WordNet's is_defined HMERONYM /
-     * HHOLONYM bits). This is the condition under which getindex's static state cuts populate's variant
-     * walk short, so it must be tested the same way is_defined tests it.
-     */
-    private fun nounHasMeronymOrHolonym(senses: List<Sense>): Boolean {
-        for (sense in senses) {
-            for (pointer in sense.synset.pointers) {
-                if (pointer.relation in MERONYM_RELATIONS || pointer.relation in HOLONYM_RELATIONS) return true
-                if (pointer.relation != WnRelation.HYPERNYM) continue
-                val hypernym = source.synsetAt(pointer.targetPos, pointer.targetOffset) ?: continue
-                if (hypernym.pointers.any { it.relation in MERONYM_RELATIONS || it.relation in HOLONYM_RELATIONS }) {
-                    return true
-                }
-            }
-        }
-        return false
     }
 
     private fun whichWord(
@@ -530,12 +497,13 @@ internal class WordNetLookup(
     }
 
     /**
-     * Grow [group] relation nodes under [parent], reproducing WordNet/Onym's grow_tree. A subtle but
-     * load-bearing quirk of grow_tree is preserved: it does not reset its current node between
-     * pointers, so when a pointer's target carries only the searched word itself (no new term, no node
-     * created), that target's own children are appended to the previous sibling instead. This is why
-     * door's "casing, case" gains a "lock" child and sing's "choir, chorus" gains the bare-"sing"
-     * synset's hyponyms; the oracle does the same, so the engine must.
+     * Grow [group] relation nodes under [parent], following WordNet/Onym's grow_tree with one
+     * deliberate departure, fix 2 of the onym-engine spec: grow_tree never reset its current node
+     * between pointers, so when a pointer's target carried only the searched word itself (no new
+     * term, no node created), the target's children were appended to the previous sibling instead.
+     * That is why door's "casing, case" used to gain a phantom "lock" child and sing's "choir,
+     * chorus" the bare-"sing" synset's hyponyms. A target that contributes no node now contributes
+     * no children either; siblings only ever carry their own.
      */
     private fun growInto(
         parent: ArrayList<TreeBuilder>,
@@ -546,18 +514,16 @@ internal class WordNetLookup(
         depth: Int,
         maxDepth: Int,
     ) {
-        var current: TreeBuilder? = null
         for (pointer in synset.pointers) {
             if (pointer.relation !in group) continue
             if (!sourceApplies(pointer, whichWord)) continue
             val target = source.synsetAt(pointer.targetPos, pointer.targetOffset) ?: continue
             val terms = target.words.map { toDisplayForm(it.lemma) }.filter { displayLower(it) != selfLemmaLower }
-            if (terms.isNotEmpty()) {
-                current = TreeBuilder(terms)
-                parent.add(current)
-            }
+            if (terms.isEmpty()) continue
+            val node = TreeBuilder(terms)
+            parent.add(node)
             if (depth + 1 < maxDepth) {
-                current?.let { growInto(it.children, target, 0, group, selfLemmaLower, depth + 1, maxDepth) }
+                growInto(node.children, target, 0, group, selfLemmaLower, depth + 1, maxDepth)
             }
         }
     }

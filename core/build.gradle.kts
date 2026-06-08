@@ -27,18 +27,29 @@ dependencies {
     testImplementation(libs.junit)
 }
 
+// Regenerates the onym-engine conformance fixtures from this engine, the reference
+// implementation until the Rust core takes over.
+tasks.register<JavaExec>("generateFixtures") {
+    description = "Regenerate the onym-engine conformance fixtures from this engine."
+    group = "verification"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("nz.ursa.onymdroid.core.FixtureGenKt")
+    systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+}
+
 tasks.withType<Test>().configureEach {
     useJUnit()
     // Point the reader at a WordNet database for tests; defaults to the system install.
     systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
-    // The onym-cli golden oracle, a sibling checkout's build; the parity test skips if it is absent.
+    // The onym-engine conformance kit, the golden oracle; a sibling checkout by default, and the
+    // parity tests skip if it is absent.
     systemProperty(
-        "onym.cli",
+        "onym.conformance",
         providers
-            .systemProperty("onym.cli")
+            .systemProperty("onym.conformance")
             .getOrElse(
                 rootProject.layout.projectDirectory
-                    .file("../onym/_build/tools/onym-cli")
+                    .dir("../onym-engine/conformance")
                     .asFile.absolutePath,
             ),
     )

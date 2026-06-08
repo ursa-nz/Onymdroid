@@ -5,6 +5,7 @@ package nz.ursa.onymdroid.core
 
 import net.sf.extjwnl.dictionary.Dictionary
 import java.io.File
+import kotlin.random.Random
 
 /**
  * The engine's public face. It resolves a word to the [OnymResult] model, completes a typed prefix,
@@ -32,6 +33,9 @@ class OnymEngine private constructor(
         word: String,
         max: Int,
     ): List<String> = index.suggest(word, max)
+
+    /** A random WordNet headword, for the dice "surprise me" action. */
+    fun randomWord(): String = index.randomWord(Random.Default)
 
     /**
      * Render [word]'s entry in the onym-cli `--dump` text format. This exists so the engine can be
@@ -115,7 +119,7 @@ class OnymEngine private constructor(
          */
         fun open(dataDir: File): OnymEngine {
             val dictionary: Dictionary = Dictionary.getFileBackedInstance(dataDir.absolutePath)
-            val source = ExtjwnlWordNetSource(dictionary)
+            val source = ExtjwnlWordNetSource(dictionary, dataDir)
             val index = LemmaIndex.build(dataDir)
             return OnymEngine(WordNetLookup(source), index)
         }

@@ -54,8 +54,9 @@ internal class WordNetSourceTest {
 
     @Test
     fun morphologyReturnsBaseForms() {
-        assertTrue("ran -> run", "run" in source.baseForms("ran", WnPos.VERB))
-        assertTrue("mice -> mouse", "mouse" in source.baseForms("mice", WnPos.NOUN))
+        // baseForms takes WordNet's part-of-speech number (verb 2, noun 1), as morphstr does.
+        assertTrue("ran -> run", "run" in source.baseForms("ran", Morphology.VERB))
+        assertTrue("mice -> mouse", "mouse" in source.baseForms("mice", Morphology.NOUN))
     }
 
     @Test

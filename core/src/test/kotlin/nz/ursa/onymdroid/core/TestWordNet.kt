@@ -33,5 +33,8 @@ internal object TestWordNet {
 
     fun openDictionary(): Dictionary = Dictionary.getFileBackedInstance(preparedDir().absolutePath)
 
-    fun openSource(): WordNetSource = ExtjwnlWordNetSource(openDictionary())
+    fun openSource(): WordNetSource {
+        val dir = preparedDir()
+        return ExtjwnlWordNetSource(Dictionary.getFileBackedInstance(dir.absolutePath), dir)
+    }
 }

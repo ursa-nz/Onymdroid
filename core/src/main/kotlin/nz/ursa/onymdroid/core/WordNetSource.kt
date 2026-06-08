@@ -76,11 +76,21 @@ internal data class WnSynset(
 
 /** The WordNet reader the engine depends on; only its adapter implementation knows extJWNL. */
 internal interface WordNetSource {
-    /** Base forms of [lemma] for [pos] via morphology; empty if there are none. */
+    /**
+     * The base forms WordNet's morphstr yields for [lemma] in [posShift], in its order, or empty.
+     * [posShift] is WordNet's part-of-speech number (1 noun … 4 adverb), and 0 for the shifted-noun
+     * degenerate case the engine uses (Onym's wni.c work-around), which yields nothing.
+     */
     fun baseForms(
         lemma: String,
-        pos: WnPos,
+        posShift: Int,
     ): List<String>
+
+    /** Whether [lemma] is a headword in [pos]'s index, the engine's in-WordNet test for a variant. */
+    fun indexWordExists(
+        lemma: String,
+        pos: WnPos,
+    ): Boolean
 
     /** The senses of [lemma] in [pos], in WordNet sense order; empty if [lemma] is not defined. */
     fun sensesOf(
@@ -93,4 +103,15 @@ internal interface WordNetSource {
         pos: WnPos,
         offset: Long,
     ): WnSynset?
+
+    /**
+     * WordNet's generic example sentences for the [wordIndex]-th word (1-based) of the synset at
+     * [pos]/[offset], with that word substituted in. Only verbs carry these (from sentidx.vrb /
+     * sents.vrb); the list is empty for any other part of speech or when the sense has none.
+     */
+    fun exampleSentences(
+        pos: WnPos,
+        offset: Long,
+        wordIndex: Int,
+    ): List<String>
 }

@@ -4,6 +4,7 @@
 package nz.ursa.onymdroid.core
 
 import java.io.File
+import kotlin.random.Random
 
 /*
  * The lemma index: every WordNet headword once, lowercased and in display form, sorted. It reads the
@@ -61,6 +62,9 @@ internal class LemmaIndex private constructor(
         val limit = if (max == 0) candidates.size else minOf(max, candidates.size)
         return candidates.subList(0, limit).map { it.term }
     }
+
+    /** A random headword in lowercased display form, for the "surprise me" action; empty if none. */
+    fun randomWord(random: Random): String = if (lemmas.isEmpty()) "" else lemmas[random.nextInt(lemmas.size)]
 
     private fun lowerBound(key: String): Int {
         var lo = 0

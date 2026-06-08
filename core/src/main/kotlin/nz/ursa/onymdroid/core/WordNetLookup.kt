@@ -12,7 +12,9 @@ package nz.ursa.onymdroid.core
  *   overview synonyms     -> a Synonyms section
  *   antonyms              -> an Antonyms section, direct and indirect (the adjective-cluster case)
  *   derivations, similar, attributes, causes, entails -> flat Words sections
- *   pertainyms, hypernyms, hyponyms, holonyms, meronyms -> Tree sections, grown to full depth
+ *   pertainyms, hypernyms, hyponyms -> Tree sections, grown to full depth
+ *   holonyms, meronyms    -> Tree sections, grown to full depth only when Onym's is_defined depth
+ *                            bit is set (see buildHolonyms / buildMeronyms), otherwise kept flat
  *   domains               -> a Domains words section
  *
  * Lexical knowledge lives here, not in the UI: this file decides section order, titles, the
@@ -24,18 +26,19 @@ internal class WordNetLookup(
     /** Look [query] up and build its entry, or null when the word is simply not in WordNet. */
     fun lookup(query: String): OnymResult? {
         val normalized = normalize(query) ?: return null
-        val senses = gatherSenses(normalized)
+        val gathered = gatherSenses(normalized)
+        val senses = gathered.senses
         if (senses.isEmpty()) return null
 
         val definitionItems = buildDefinitionItems(senses, normalized)
         if (definitionItems.isEmpty()) return null
-        val headwordLemmas = definitionItems.map { it.lemma }.toSet()
         val headword = definitionItems.first().displayLemma
+        val nounDepth = computeNounDepth(senses)
 
         val sections =
             buildList {
                 addDefinitions(definitionItems)
-                addWords("Synonyms", buildSynonyms(senses, headwordLemmas))
+                addWords("Synonyms", buildSynonyms(senses, gathered.lemmas))
                 addAntonyms(senses)
                 addWords("Derived forms", buildFlat(senses, setOf(WnRelation.DERIVATION)))
                 addWords("Similar to", buildFlat(senses, setOf(WnRelation.SIMILAR_TO), adjectivesOnly = true))
@@ -45,8 +48,8 @@ internal class WordNetLookup(
                 addTree("Pertains to", buildPertainyms(senses))
                 addTree("Is a kind of", buildTree(senses, HYPERNYM_GROUPS))
                 addTree("Kinds", buildTree(senses, HYPONYM_GROUPS))
-                addTree("Part of", buildTree(senses, HOLONYM_GROUPS))
-                addTree("Parts", buildMeronyms(senses))
+                addTree("Part of", buildHolonyms(senses, nounDepth))
+                addTree("Parts", buildMeronyms(senses, nounDepth))
                 addWords("Domains", buildDomains(senses))
             }
         return OnymResult(headword, sections)
@@ -69,37 +72,119 @@ internal class WordNetLookup(
         return lemma
     }
 
-    /** Gather every sense across the four parts of speech, surface form then morphology, deduped by offset. */
-    private fun gatherSenses(normalized: String): List<Sense> {
+    /** The gathered senses and the set of lemmas that found them, for synonym exclusion. */
+    private class Gathered(
+        val senses: List<Sense>,
+        val lemmas: Set<String>,
+    )
+
+    /**
+     * Gather every sense across the four parts of speech, reproducing Onym's wni_request_nyms: for each
+     * part of speech the surface form is searched, then morphology, and each searched form is expanded
+     * to its index variants the way WordNet's getindex does (hyphen/underscore/joined/period forms).
+     * Every variant that resolves contributes a lemma (used to suppress those forms as their own
+     * synonyms), and its senses unless their synset has already been seen for that searched form.
+     *
+     * The morphology dispatch mirrors wni.c exactly, including its Ubuntu work-around: morphology is
+     * tried first with the part of speech shifted down by one, and only if that yields nothing (across
+     * all parts of speech so far — the flag is sticky) is it retried at the correct part of speech.
+     */
+    private fun gatherSenses(normalized: String): Gathered {
         val senses = ArrayList<Sense>()
-        // Each (lemma, part of speech) contributes its senses independently — Onym does not
-        // de-duplicate across morphology variants, so a synset shared by two of them (good and well
-        // both mean "resulting favorably") is listed under each, as the oracle does.
-        for (pos in POS_ORDER) {
-            val candidates = LinkedHashSet<String>()
-            candidates.add(normalized)
-            val wordCount = normalized.count { it == '_' }
-            for (base in source.baseForms(normalized, pos)) {
-                val candidate = asciiLower(toQueryForm(base))
-                // Morphology must preserve the collocation's word count: extJWNL otherwise decomposes a
-                // multiword query into its parts (ice cream -> ice, cream), which WordNet's morphstr does not.
-                if (candidate.count { it == '_' } == wordCount) candidates.add(candidate)
-            }
-            for (lemma in candidates) {
-                for (synset in source.sensesOf(lemma, pos)) {
-                    senses.add(Sense(lemma, pos, synset, whichWord(synset, lemma)))
+        val lemmas = LinkedHashSet<String>()
+        var morphwordInFile = true
+        for ((index, pos) in POS_ORDER.withIndex()) {
+            // The surface form, then each base form WordNet's morphstr yields.
+            gather(normalized, pos, senses, lemmas)
+
+            val shiftedBases = if (morphwordInFile) source.baseForms(normalized, index) else emptyList()
+            if (shiftedBases.isNotEmpty()) {
+                for (base in shiftedBases) gather(base, pos, senses, lemmas)
+            } else {
+                val bases = source.baseForms(normalized, index + 1)
+                if (bases.isNotEmpty()) {
+                    morphwordInFile = false
+                    for (base in bases) gather(base, pos, senses, lemmas)
                 }
             }
         }
-        return senses
+        return Gathered(senses, lemmas)
+    }
+
+    /** A getindex variant that resolved: its lemma and the senses it contributes after offset de-dup. */
+    private class Variant(
+        val lemma: String,
+        val senses: List<Sense>,
+    )
+
+    /**
+     * Search [form] in [pos] through its WordNet getindex variants, adding each resolved variant's
+     * lemma to [lemmas] and its senses to [senses] (offset-deduplicated across variants, as Onym's
+     * populate does).
+     *
+     * One quirk of the WordNet C library is reproduced here. populate, while building a noun's part-of
+     * / parts tree, calls is_defined, which shares getindex's static iteration state and so cuts short
+     * populate's own walk over the remaining variants. The upshot is that a noun carrying meronyms or
+     * holonyms only ever sees its first getindex variant — which is why "shore bird" keeps "shorebird"
+     * as a synonym (the shorebird variant is never reached to claim it as a lemma) while "ash bin",
+     * having no such tree, suppresses ash-bin and ashbin. The oracle does this, so the engine must.
+     */
+    private fun gather(
+        form: String,
+        pos: WnPos,
+        senses: MutableList<Sense>,
+        lemmas: MutableSet<String>,
+    ) {
+        val seenOffsets = HashSet<Long>()
+        val variants = ArrayList<Variant>()
+        for (variant in indexVariants(form)) {
+            val variantSenses = source.sensesOf(variant, pos)
+            if (variantSenses.isEmpty()) continue
+            val kept =
+                variantSenses
+                    .filter { seenOffsets.add(it.offset) }
+                    .map { Sense(variant, pos, it, whichWord(it, variant)) }
+            variants.add(Variant(displayLower(variant), kept))
+        }
+
+        val truncate = pos == WnPos.NOUN && variants.isNotEmpty() && nounHasMeronymOrHolonym(variants.flatMap { it.senses })
+        val effective = if (truncate) variants.take(1) else variants
+        for (variant in effective) {
+            lemmas.add(variant.lemma)
+            senses.addAll(variant.senses)
+        }
+    }
+
+    /**
+     * Whether a noun's senses give it a Part of / Parts tree, i.e. any sense carries a meronym or
+     * holonym pointer, or inherits one through an immediate hypernym (WordNet's is_defined HMERONYM /
+     * HHOLONYM bits). This is the condition under which getindex's static state cuts populate's variant
+     * walk short, so it must be tested the same way is_defined tests it.
+     */
+    private fun nounHasMeronymOrHolonym(senses: List<Sense>): Boolean {
+        for (sense in senses) {
+            for (pointer in sense.synset.pointers) {
+                if (pointer.relation in MERONYM_RELATIONS || pointer.relation in HOLONYM_RELATIONS) return true
+                if (pointer.relation != WnRelation.HYPERNYM) continue
+                val hypernym = source.synsetAt(pointer.targetPos, pointer.targetOffset) ?: continue
+                if (hypernym.pointers.any { it.relation in MERONYM_RELATIONS || it.relation in HOLONYM_RELATIONS }) {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     private fun whichWord(
         synset: WnSynset,
         lemma: String,
     ): Int {
+        // WordNet's read_synset keeps the LAST synset word whose lower-case matches, not the first, so
+        // a synset carrying both "utopian" and "Utopian" resolves to the second; lexical pointers
+        // restricted to that word index then apply, which is how "utopian" reaches its "Utopia"
+        // derivation.
         val target = displayLower(lemma)
-        val index = synset.words.indexOfFirst { displayLower(it.lemma) == target }
+        val index = synset.words.indexOfLast { displayLower(it.lemma) == target }
         return if (index >= 0) index + 1 else 0
     }
 
@@ -128,29 +213,45 @@ internal class WordNetLookup(
         val grouped = LinkedHashMap<Pair<String, WnPos>, MutableList<Sense>>()
         for (sense in senses) grouped.getOrPut(sense.lemma to sense.pos) { ArrayList() }.add(sense)
 
+        // Items are built in WordNet's part-of-speech order (noun, verb, adjective, adverb), which is
+        // the order [POS_ORDER] gathered them, so case-claiming below follows Onym's processing order.
+        val claimed = HashSet<String>()
         val items = ArrayList<DefinitionItem>()
         for ((key, group) in grouped) {
             val (lemma, pos) = key
-            val displayLemma = properCase(lemma, group.first().synset)
+            val displayLemma = resolveDisplayLemma(lemma, group.first().synset, claimed)
+            claimed.add(displayLemma)
             val definitions =
                 group.map { sense ->
                     val (gloss, examples) = parseDefinition(sense.synset.gloss)
-                    OnymDefinition(posName(pos), gloss, examples)
+                    // A verb whose gloss carries no example falls back to WordNet's generic sentence
+                    // frames, exactly as Onym's find_example does.
+                    val resolved =
+                        if (examples.isEmpty() && pos == WnPos.VERB) {
+                            source.exampleSentences(sense.pos, sense.synset.offset, sense.whichWord)
+                        } else {
+                            examples
+                        }
+                    OnymDefinition(posName(pos), gloss, resolved)
                 }
-            val tagCount =
-                group.first().let {
-                    it.synset.words
-                        .getOrNull(it.whichWord - 1)
-                        ?.useCount ?: 0
-                }
+            // The first-sense tag count, keyed on the FIRST synset word matching the lemma — Onym's
+            // GetTagcnt builds its sense key from WNSnsToStr, which takes the first match, not the last
+            // one whichWord resolves to (a synset may list both "Moon" and "moon", with only the
+            // capitalised first one carrying the tag count).
+            val first = group.first()
+            val target = displayLower(first.lemma)
+            val tagCount = first.synset.words.firstOrNull { displayLower(it.lemma) == target }?.useCount ?: 0
             items.add(DefinitionItem(lemma, displayLemma, pos, definitions, tagCount, group.size))
         }
 
+        // Onym's pos_list_compare: when the lemmas differ, the one that matches the search string
+        // exactly (case sensitively) wins; otherwise the higher first-sense tag count, then polysemy.
         items.sortWith(
             Comparator { a, b ->
-                val aExact = if (displayLower(a.lemma) == displayLower(normalized)) 1 else 0
-                val bExact = if (displayLower(b.lemma) == displayLower(normalized)) 1 else 0
-                if (aExact != bExact) return@Comparator bExact - aExact
+                if (a.displayLemma != b.displayLemma) {
+                    if (normalized == a.displayLemma) return@Comparator -1
+                    if (normalized == b.displayLemma) return@Comparator 1
+                }
                 if (a.tagCount != b.tagCount) return@Comparator b.tagCount - a.tagCount
                 b.polysemy - a.polysemy
             },
@@ -158,13 +259,27 @@ internal class WordNetLookup(
         return items
     }
 
-    /** Restore the case WordNet stores for the headword (e.g. wordsworth -> Wordsworth). */
-    private fun properCase(
+    /**
+     * Resolve the lemma's case the way Onym's populate_synonyms does. While listing the prime sense's
+     * words it re-points the lemma at each synset word that matches it case-insensitively, so the LAST
+     * such word wins: "wordsworth" becomes "Wordsworth", but a synset listing both "Moon" and "moon"
+     * settles on "moon", which is why the lower-cased query then sorts as an exact match. A spelling
+     * already claimed as another item's lemma is skipped (is_synm_a_lemma), so a demonym adjective
+     * stays lower-case once its proper-noun twin has taken the capital.
+     */
+    private fun resolveDisplayLemma(
         lemma: String,
-        synset: WnSynset,
+        sense1Synset: WnSynset,
+        claimed: Set<String>,
     ): String {
-        val match = synset.words.firstOrNull { displayLower(it.lemma) == displayLower(lemma) }
-        return toDisplayForm(match?.lemma ?: lemma)
+        var current = toDisplayForm(lemma)
+        val target = displayLower(lemma)
+        for (word in sense1Synset.words) {
+            val wordDisplay = toDisplayForm(word.lemma)
+            if (wordDisplay in claimed) continue
+            if (displayLower(wordDisplay) == target) current = wordDisplay
+        }
+        return current
     }
 
     private fun MutableList<OnymSection>.addDefinitions(items: List<DefinitionItem>) {
@@ -176,23 +291,23 @@ internal class WordNetLookup(
 
     private fun buildSynonyms(
         senses: List<Sense>,
-        headwordLemmas: Set<String>,
+        lemmas: Set<String>,
     ): List<OnymWord> {
-        val headwords = headwordLemmas.map { displayLower(it) }.toSet()
-        // A multiword headword's space-collapsed variant (e.g. "icecream" for "ice cream") is not
-        // listed as its own synonym, matching the oracle.
-        val collapsedMultiword = headwords.filter { ' ' in it }.map { it.replace(" ", "") }.toSet()
         val seen = LinkedHashSet<String>()
+        val result = ArrayList<OnymWord>()
         for (sense in senses) {
-            val selfLower = displayLower(sense.lemma)
             for (word in sense.synset.words) {
+                // A synset word is its own lemma's synonym only when it is not itself a searched form:
+                // Onym suppresses every getindex variant and morphology base form (ash bin, ash-bin,
+                // ashbin) as a synonym of one another, so only genuinely distinct words remain.
                 val lower = displayLower(word.lemma)
-                if (lower == selfLower || lower in headwords) continue
-                if (lower.replace(" ", "") in collapsedMultiword) continue
-                seen.add(toDisplayForm(word.lemma))
+                if (lower in lemmas) continue
+                // Synonyms are de-duplicated case-insensitively, first spelling kept, as Onym's
+                // check_term_in_list does — so "wye" lists "Y" once, not both "Y" and "y".
+                if (seen.add(lower)) result.add(OnymWord(toDisplayForm(word.lemma)))
             }
         }
-        return seen.map { OnymWord(it) }
+        return result
     }
 
     // --- Antonyms -----------------------------------------------------------------------------------
@@ -310,36 +425,51 @@ internal class WordNetLookup(
         senses: List<Sense>,
         relations: Set<WnRelation>,
         adjectivesOnly: Boolean = false,
+        ignoreSourceWord: Boolean = false,
     ): List<OnymWord> {
+        // Terms are de-duplicated case-insensitively with the first spelling kept, as Onym's
+        // check_term_in_list does — so a derived form listed as "Catholicity" is not repeated as
+        // "catholicity".
         val seen = LinkedHashSet<String>()
+        val result = ArrayList<OnymWord>()
         for (sense in senses) {
             if (adjectivesOnly && sense.pos != WnPos.ADJECTIVE) continue
             val selfLower = displayLower(sense.lemma)
             for (pointer in sense.synset.pointers) {
                 if (pointer.relation !in relations) continue
-                if (!sourceApplies(pointer, sense.whichWord)) continue
+                if (!ignoreSourceWord && !sourceApplies(pointer, sense.whichWord)) continue
                 val target = source.synsetAt(pointer.targetPos, pointer.targetOffset) ?: continue
                 for (word in target.words) {
-                    if (displayLower(word.lemma) == selfLower) continue
-                    seen.add(toDisplayForm(word.lemma))
+                    val lower = displayLower(word.lemma)
+                    if (lower == selfLower) continue
+                    if (seen.add(lower)) result.add(OnymWord(toDisplayForm(word.lemma)))
                 }
             }
         }
-        return seen.map { OnymWord(it) }
+        return result
     }
 
-    private fun buildDomains(senses: List<Sense>): List<OnymWord> =
-        buildFlat(
-            senses,
-            setOf(
-                WnRelation.CATEGORY,
-                WnRelation.USAGE,
-                WnRelation.REGION,
-                WnRelation.CATEGORY_MEMBER,
-                WnRelation.USAGE_MEMBER,
-                WnRelation.REGION_MEMBER,
-            ),
-        )
+    /**
+     * Domains: the in-domain pointers (category / usage / region) and the domain-member pointers.
+     *
+     * These behave unusually, mirroring WordNet's index files and Onym's populate. The section appears
+     * for a part of speech only if the searched word is itself the source of a domain pointer there
+     * (the `;` / `-` symbols its index line would carry — is_defined's CLASSIFICATION / CLASS bits).
+     * But once it appears, populate follows every domain pointer of those senses regardless of which
+     * word it springs from. So "chequing account" (whose own word has a region link) lists all of its
+     * synset's UK, Canadian and US domains, whereas "nadolol" (whose only domain link springs from its
+     * synonym "Corgard") shows no domains at all.
+     */
+    private fun buildDomains(senses: List<Sense>): List<OnymWord> {
+        val gatedPositions =
+            senses
+                .filter { sense ->
+                    sense.synset.pointers.any { it.relation in DOMAIN_RELATIONS && sourceApplies(it, sense.whichWord) }
+                }.map { it.pos }
+                .toSet()
+        val gated = senses.filter { it.pos in gatedPositions }
+        return buildFlat(gated, DOMAIN_RELATIONS, ignoreSourceWord = true)
+    }
 
     private fun MutableList<OnymSection>.addWords(
         title: String,
@@ -378,6 +508,14 @@ internal class WordNetLookup(
         return nodes
     }
 
+    /** A tree node under construction: its terms and a growing list of child nodes. */
+    private class TreeBuilder(
+        val terms: List<String>,
+        val children: ArrayList<TreeBuilder> = ArrayList(),
+    ) {
+        fun build(): OnymTreeNode = OnymTreeNode(terms, children.map { it.build() })
+    }
+
     private fun growNodes(
         synset: WnSynset,
         whichWord: Int,
@@ -386,29 +524,55 @@ internal class WordNetLookup(
         depth: Int,
         maxDepth: Int,
     ): List<OnymTreeNode> {
-        val nodes = ArrayList<OnymTreeNode>()
+        val nodes = ArrayList<TreeBuilder>()
+        growInto(nodes, synset, whichWord, group, selfLemmaLower, depth, maxDepth)
+        return nodes.map { it.build() }
+    }
+
+    /**
+     * Grow [group] relation nodes under [parent], reproducing WordNet/Onym's grow_tree. A subtle but
+     * load-bearing quirk of grow_tree is preserved: it does not reset its current node between
+     * pointers, so when a pointer's target carries only the searched word itself (no new term, no node
+     * created), that target's own children are appended to the previous sibling instead. This is why
+     * door's "casing, case" gains a "lock" child and sing's "choir, chorus" gains the bare-"sing"
+     * synset's hyponyms; the oracle does the same, so the engine must.
+     */
+    private fun growInto(
+        parent: ArrayList<TreeBuilder>,
+        synset: WnSynset,
+        whichWord: Int,
+        group: Set<WnRelation>,
+        selfLemmaLower: String,
+        depth: Int,
+        maxDepth: Int,
+    ) {
+        var current: TreeBuilder? = null
         for (pointer in synset.pointers) {
             if (pointer.relation !in group) continue
             if (!sourceApplies(pointer, whichWord)) continue
             val target = source.synsetAt(pointer.targetPos, pointer.targetOffset) ?: continue
             val terms = target.words.map { toDisplayForm(it.lemma) }.filter { displayLower(it) != selfLemmaLower }
-            if (terms.isEmpty()) continue
-            val children =
-                if (depth + 1 < maxDepth) {
-                    growNodes(target, 0, group, selfLemmaLower, depth + 1, maxDepth)
-                } else {
-                    emptyList()
-                }
-            nodes.add(OnymTreeNode(terms, children))
+            if (terms.isNotEmpty()) {
+                current = TreeBuilder(terms)
+                parent.add(current)
+            }
+            if (depth + 1 < maxDepth) {
+                current?.let { growInto(it.children, target, 0, group, selfLemmaLower, depth + 1, maxDepth) }
+            }
         }
-        return nodes
     }
 
-    /** Pertainyms, with one level of hypernyms shown beneath each, as Onym does. */
+    /**
+     * Pertainyms, with one level of hypernyms shown beneath the first only. grow_tree zeroes its depth
+     * the first time it descends into a pertainym's hypernyms, so every later pertainym of the same
+     * sense is left bare — which is why "hasidic" shows "Orthodox Judaism" under "Hasidism" but nothing
+     * under "Hasidim". The oracle does this, so the engine must.
+     */
     private fun buildPertainyms(senses: List<Sense>): List<OnymTreeNode> {
         val seen = HashSet<String>()
         val nodes = ArrayList<OnymTreeNode>()
         for (sense in senses) {
+            var grown = false
             for (pointer in sense.synset.pointers) {
                 if (pointer.relation != WnRelation.PERTAINYM) continue
                 if (!sourceApplies(pointer, sense.whichWord)) continue
@@ -416,7 +580,9 @@ internal class WordNetLookup(
                 val selfLower = displayLower(sense.lemma)
                 val terms = target.words.map { toDisplayForm(it.lemma) }.filter { displayLower(it) != selfLower }
                 if (terms.isEmpty()) continue
-                val children = growNodes(target, 0, HYPERNYM_GROUPS.first(), selfLower, 0, maxDepth = 1)
+                val children =
+                    if (!grown) growNodes(target, 0, HYPERNYM_GROUPS.first(), selfLower, 0, maxDepth = 1) else emptyList()
+                grown = true
                 val node = OnymTreeNode(terms, children)
                 if (seen.add(node.label)) nodes.add(node)
             }
@@ -424,23 +590,90 @@ internal class WordNetLookup(
         return nodes
     }
 
+    /** Onym's is_defined depth bits for a noun lemma. */
+    private class NounDepth(
+        val meronym: Boolean,
+        val holonym: Boolean,
+    )
+
     /**
-     * Parts (meronyms): the three subtypes combined in order. The tree is flat unless a hypernym
-     * ancestor of the word also has meronyms (Onym's bit(HMERONYM) test); then the meronyms grow to
-     * full depth and each ancestor's inherited meronyms are traced as well.
+     * Compute Onym's is_defined depth bits per noun lemma. is_defined(lemma, NOUN) sets bit(HMERONYM)
+     * / bit(HHOLONYM) when any of the lemma's noun senses has an immediate hypernym that itself carries
+     * a meronym / holonym pointer (WordNet's HasHoloMero).
+     *
+     * Two faithful details matter. is_defined resolves the lemma through getindex's variants and ORs
+     * the bits across all of them, so a word's depth can be raised by a same-spelt homograph: the plant
+     * "pica-pica" grows its part-of tree deep only because the magpie "pica_pica" (a getindex variant)
+     * inherits a holonym. And is_defined is given the space-separated lemma, whose getindex variants
+     * never recover an underscored multiword index key, so a multiword term never resolves and stays
+     * flat.
      */
-    private fun buildMeronyms(senses: List<Sense>): List<OnymTreeNode> {
-        val inherited = senses.any { ancestorHasMeronym(it.synset) }
-        val maxDepth = if (inherited) MAX_TREE_DEPTH else 1
+    private fun computeNounDepth(senses: List<Sense>): Map<String, NounDepth> {
+        val result = HashMap<String, NounDepth>()
+        for (lemma in senses.filter { it.pos == WnPos.NOUN }.map { it.lemma }.toSet()) {
+            var meronym = false
+            var holonym = false
+            // is_defined sees the space form, whose variants are looked up by exact key; WordNet index
+            // keys never contain spaces, so a still-spaced multiword variant cannot match (it is only
+            // extJWNL that would resolve it), which is what keeps multiword nouns' trees flat.
+            for (variant in indexVariants(toDisplayForm(lemma)).filter { ' ' !in it }) {
+                for (synset in source.sensesOf(variant, WnPos.NOUN)) {
+                    for (pointer in synset.pointers) {
+                        if (pointer.relation != WnRelation.HYPERNYM) continue
+                        val hypernym = source.synsetAt(pointer.targetPos, pointer.targetOffset) ?: continue
+                        if (!meronym && hypernym.pointers.any { it.relation in MERONYM_RELATIONS }) meronym = true
+                        if (!holonym && hypernym.pointers.any { it.relation in HOLONYM_RELATIONS }) holonym = true
+                    }
+                }
+            }
+            result[lemma] = NounDepth(meronym, holonym)
+        }
+        return result
+    }
+
+    /**
+     * Part of (holonyms): the three subtypes combined in order. Grown to full depth only when the
+     * lemma's HHOLONYM bit is set (a noun sense's immediate hypernym is itself part/member/substance
+     * of something); otherwise just the word's own holonyms, one level deep.
+     */
+    private fun buildHolonyms(
+        senses: List<Sense>,
+        nounDepth: Map<String, NounDepth>,
+    ): List<OnymTreeNode> {
         val seen = HashSet<String>()
         val nodes = ArrayList<OnymTreeNode>()
         for (sense in senses) {
+            val maxDepth = if (nounDepth[sense.lemma]?.holonym == true) MAX_TREE_DEPTH else 1
+            val selfLower = displayLower(sense.lemma)
+            for (group in HOLONYM_GROUPS) {
+                for (node in growNodes(sense.synset, sense.whichWord, group, selfLower, 0, maxDepth)) {
+                    if (seen.add(node.label)) nodes.add(node)
+                }
+            }
+        }
+        return nodes
+    }
+
+    /**
+     * Parts (meronyms): the three subtypes combined in order. Grown to full depth, with each
+     * ancestor's inherited meronyms traced, only when the lemma's HMERONYM bit is set; otherwise just
+     * the word's own meronyms, one level deep.
+     */
+    private fun buildMeronyms(
+        senses: List<Sense>,
+        nounDepth: Map<String, NounDepth>,
+    ): List<OnymTreeNode> {
+        val seen = HashSet<String>()
+        val nodes = ArrayList<OnymTreeNode>()
+        for (sense in senses) {
+            val deep = nounDepth[sense.lemma]?.meronym == true
+            val maxDepth = if (deep) MAX_TREE_DEPTH else 1
             val selfLower = displayLower(sense.lemma)
             val topLevel = ArrayList<OnymTreeNode>()
             for (group in MERONYM_GROUPS) {
                 topLevel.addAll(growNodes(sense.synset, sense.whichWord, group, selfLower, 0, maxDepth))
             }
-            if (inherited) {
+            if (deep) {
                 topLevel.addAll(traceInherit(sense.synset, sense.whichWord, selfLower, 1))
             }
             for (node in topLevel) {
@@ -449,16 +682,6 @@ internal class WordNetLookup(
         }
         return nodes
     }
-
-    /** Whether an immediate hypernym of the synset has a meronym; Onym's bit(HMERONYM) test. */
-    private fun ancestorHasMeronym(synset: WnSynset): Boolean =
-        synset.pointers.any { pointer ->
-            pointer.relation == WnRelation.HYPERNYM &&
-                source
-                    .synsetAt(pointer.targetPos, pointer.targetOffset)
-                    ?.pointers
-                    ?.any { it.relation in MERONYM_RELATIONS } == true
-        }
 
     /** Trace inherited meronyms up the is-a chain, keeping only ancestors that contribute parts. */
     private fun traceInherit(
@@ -601,7 +824,35 @@ internal class WordNetLookup(
             )
         private val MERONYM_RELATIONS =
             setOf(WnRelation.MEMBER_MERONYM, WnRelation.SUBSTANCE_MERONYM, WnRelation.PART_MERONYM)
+        private val HOLONYM_RELATIONS =
+            setOf(WnRelation.MEMBER_HOLONYM, WnRelation.SUBSTANCE_HOLONYM, WnRelation.PART_HOLONYM)
+        private val DOMAIN_RELATIONS =
+            setOf(
+                WnRelation.CATEGORY,
+                WnRelation.USAGE,
+                WnRelation.REGION,
+                WnRelation.CATEGORY_MEMBER,
+                WnRelation.USAGE_MEMBER,
+                WnRelation.REGION_MEMBER,
+            )
     }
+}
+
+/**
+ * WordNet's getindex search forms for [form]: the form itself, with underscores turned to hyphens,
+ * with hyphens turned to underscores, with spaces and hyphens removed, and with periods removed —
+ * de-duplicated, in that order. This is how a hyphenated query also finds its joined spelling
+ * (cut-in -> cutin), how variant spellings of a headword are recognised as the same word, and how
+ * morphology's is_defined test accepts a base form spelled differently (horse_race -> horse-race).
+ */
+internal fun indexVariants(form: String): List<String> {
+    val variants = LinkedHashSet<String>()
+    variants.add(form)
+    variants.add(form.replace('_', '-'))
+    variants.add(form.replace('-', '_'))
+    variants.add(form.filterNot { it == '_' || it == '-' })
+    variants.add(form.filterNot { it == '.' })
+    return variants.toList()
 }
 
 /** ASCII-only lower-casing, matching WordNet's strtolower (locale-independent). */

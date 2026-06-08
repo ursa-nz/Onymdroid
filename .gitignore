@@ -8,6 +8,11 @@ build/
 # Local, machine-specific configuration (SDK location)
 local.properties
 
+# Release signing — never commit the keystore or its passwords
+keystore.properties
+*.jks
+*.keystore
+
 # Kotlin
 .kotlin/
 

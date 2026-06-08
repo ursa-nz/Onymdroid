@@ -17,3 +17,7 @@ trim_trailing_whitespace = false
 [*.{kt,kts}]
 max_line_length = 120
 ktlint_code_style = ktlint_official
+# Jetpack Compose names @Composable UI functions in PascalCase by convention; exempt them and
+# their lambda-parameter equivalents from the lowercase function-naming rule.
+ktlint_function_naming_ignore_when_annotated_with = Composable
+ktlint_function_signature_body_expression_wrapping = default

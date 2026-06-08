@@ -17,9 +17,9 @@ network, no accounts, and no background work.
 
 ## Status
 
-In development, working towards v0.1. The lexical engine is a Kotlin reimplementation of
-Onym's lookup logic (itself derived from Artha), checked for output parity against the
-upstream `onym-cli` golden oracle.
+v0.1. The lexical engine is a Kotlin reimplementation of Onym's lookup logic (itself
+derived from Artha), and its output matches the upstream `onym-cli` golden oracle both on
+the focused acceptance cases and across a broad stratified sweep of the vocabulary.
 
 ## Architecture
 
@@ -27,7 +27,10 @@ upstream `onym-cli` golden oracle.
   result model, the lookup and relation-mapping logic, completion and suggestion, and the
   `WordNetSource` adapter behind which the WordNet reader is sealed.
 - **`:app`** — a Jetpack Compose (Material 3 and Material You) front end and its
-  ViewModel.
+  ViewModel. The UI is adaptive: a list-detail layout that shows a single pane on a phone
+  and a search pane beside the word detail on a tablet or unfolded foldable. It draws edge
+  to edge, follows the system light/dark setting with dynamic colour, and debounces live
+  search through the ViewModel, which also owns the back/forward word history.
 
 Dependencies point strictly inward: the UI never sees a WordNet type, and the engine
 never sees an Android one.
@@ -40,16 +43,49 @@ Requires the Android SDK (platform 36, build-tools 36.1.0) and JDK 21.
 ./gradlew :app:assembleDebug
 ```
 
+Debug builds are not optimised — `debuggable` disables ART's ahead-of-time compilation —
+so scrolling feels laggy. The release build is the representative one.
+
+### Releasing
+
+The release build is minified and resource-shrunk with R8. extJWNL loads its dictionary and
+morphology implementations by reflection, so its package is kept (see
+`app/proguard-rules.pro`); the build also packages the Compose libraries' baseline profiles,
+so it scrolls smoothly. Release signing is read from a `keystore.properties` at the
+repository root, which is never committed:
+
+```properties
+storeFile=onym-release.jks
+storePassword=…
+keyAlias=onym
+keyPassword=…
+```
+
+Without that file the release falls back to the debug key, so a fresh checkout still builds.
+
+```sh
+./gradlew :app:assembleRelease    # app/build/outputs/apk/release/app-release.apk
+```
+
+That signed APK is what the [software.ursa.nz](https://software.ursa.nz/fdroid/repo) F-Droid
+repository serves; F-Droid distributes it as-is, so the app-signing key must stay constant
+across releases.
+
 ## Out of scope for v0.1
 
 These are deliberately absent, not stubbed:
 
+- IPA pronunciation (WordNet carries no phonetics) and any audio/text-to-speech
+- A manual light/dark theme toggle — the app follows the system setting and Material You
+  dynamic colour instead
 - Text-selection lookup (the `PROCESS_TEXT` action) and a share target
 - A home-screen search widget
 - Download-on-first-run (the database is bundled instead)
-- Tablet and adaptive layouts
 - Kotlin Multiplatform
-- Distribution automation
+- A custom, app-specific baseline profile — the release packages the Compose libraries'
+  own baseline profiles, which is enough for smooth scrolling
+- In-repository continuous integration — release APKs are built and signed locally and
+  published through the separate `software.ursa.nz` deploy repository
 
 ## Attribution
 
@@ -57,8 +93,12 @@ These are deliberately absent, not stubbed:
   Princeton University.
 - The lookup logic is derived from [Artha](https://github.com/sria91/artha), an earlier
   WordNet thesaurus by Sundaram Ramaswamy.
-- Crafted on Kaurna Pangkarra, in Australia, with respect to the Kaurna people, their
-  language, and their continuing connection to this Country.
+- The interface uses the [Lora](https://github.com/cyrealtype/Lora-Cyrillic) serif and the
+  [Roboto Flex](https://github.com/googlefonts/roboto-flex) body face, both from the Google
+  Fonts project under the SIL Open Font Licence. They are bundled, not fetched at runtime, so
+  the app needs no Google Play Services.
+- Built in Narrm on Woiwurrung, Boonwurrung Country, with respect to the Wurundjeri and
+  Bunurong peoples, their languages, and their continuing connection to this Country.
 
 ## Licence
 

@@ -3,12 +3,14 @@
 
 version = 1
 
-# The Gradle wrapper ships with the project but is Gradle's own code, kept verbatim. Its
-# licence is declared here rather than by editing the files, so it stays upstream-identical.
+# The Gradle wrapper and the daemon-JVM toolchain descriptor ship with the project but are
+# Gradle's own generated files, kept verbatim. Their licence is declared here rather than by
+# editing the files, so they stay upstream-identical.
 [[annotations]]
 path = [
     "gradle/wrapper/gradle-wrapper.jar",
     "gradle/wrapper/gradle-wrapper.properties",
+    "gradle/gradle-daemon-jvm.properties",
     "gradlew",
     "gradlew.bat",
 ]
@@ -23,3 +25,18 @@ path = "app/src/main/assets/wordnet/**"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2006 Princeton University"
 SPDX-License-Identifier = "LicenseRef-WordNet"
+
+# Bundled UI fonts: Lora (the serif used for the headword and headings) and Roboto Flex (the
+# body face), both from the Google Fonts project under the SIL Open Font Licence. Bundled rather
+# than fetched at runtime so the app needs no Google Play Services. Binaries carry no inline header.
+[[annotations]]
+path = "app/src/main/res/font/lora_variable.ttf"
+precedence = "override"
+SPDX-FileCopyrightText = "2011 The Lora Project Authors (https://github.com/cyrealtype/Lora-Cyrillic)"
+SPDX-License-Identifier = "OFL-1.1"
+
+[[annotations]]
+path = "app/src/main/res/font/roboto_flex_variable.ttf"
+precedence = "override"
+SPDX-FileCopyrightText = "2017 The Roboto Flex Project Authors (https://github.com/googlefonts/roboto-flex)"
+SPDX-License-Identifier = "OFL-1.1"

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<!-- The dark-mode activity theme; see values/themes.xml. -->
+<resources>
+    <style name="Theme.Onym" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@android:color/black</item>
+    </style>
+</resources>

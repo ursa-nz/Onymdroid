@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<!--
+The activity theme. The visible UI is entirely Jetpack Compose (see OnymTheme), so this theme only
+needs to start the window edge to edge with no action bar; enableEdgeToEdge() makes the system bars
+transparent at runtime. A values-night variant flips the base to the dark platform theme so the very
+first frame, before Compose draws, matches the system setting.
+-->
+<resources>
+    <style name="Theme.Onym" parent="@android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">@android:color/white</item>
+    </style>
+</resources>

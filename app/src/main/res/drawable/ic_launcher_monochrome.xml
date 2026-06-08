@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<!-- Themed-icon silhouette: the two-panel book — glyph lines on the cover, entry lines on the page. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#1C1B1F"
+        android:fillType="evenOdd"
+        android:pathData="M27,28 h54 a5,5 0 0 1 5,5 v42 a5,5 0 0 1 -5,5 h-54 a5,5 0 0 1 -5,-5 v-42 a5,5 0 0 1 5,-5 z M53,32 h2 v44 h-2 z M30,42 h13 v2 h-13 z M30,50 h13 v2 h-13 z M30,58 h10 v2 h-10 z M60,42 h16 v2 h-16 z M60,50 h16 v2 h-16 z M60,58 h12 v2 h-12 z" />
+</vector>

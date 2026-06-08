@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+SPDX-License-Identifier: GPL-3.0-or-later
+-->
+<!--
+  onym's book as two panels over the cover gradient: the embossed scroll glyph on the left board, and
+  the cream dictionary page with its headword and entry on the right.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Gutter shadow where the page meets the cover. -->
+    <path android:pathData="M49,17 h3 v74 h-3 z" android:fillColor="#1C3052" android:fillAlpha="0.35" />
+
+    <!-- Cream dictionary page (right leaf). -->
+    <path
+        android:pathData="M57,14 h36 a5,5 0 0 1 5,5 v70 a5,5 0 0 1 -5,5 h-36 a5,5 0 0 1 -5,-5 v-70 a5,5 0 0 1 5,-5 z"
+        android:fillColor="#F4EBD2" />
+
+    <!-- Headword and entry lines on the page. -->
+    <path android:pathData="M58,24 h22 v4.5 h-22 z" android:fillColor="#353C4E" />
+    <path android:fillColor="#454C5E"
+        android:pathData="M58,34 h8 v2.6 h-8 z M58,41 h30 v2.6 h-30 z M58,48 h30 v2.6 h-30 z M58,55 h26 v2.6 h-26 z M58,62 h30 v2.6 h-30 z M58,69 h20 v2.6 h-20 z M58,76 h28 v2.6 h-28 z" />
+
+    <!-- Embossed scroll glyph on the cover: a light highlight under the incised dark mark. -->
+    <group android:translateX="1.1" android:translateY="1.4">
+        <path
+            android:pathData="M19,36 h16 a4,4 0 0 1 4,4 v24 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-24 a4,4 0 0 1 4,-4 z"
+            android:strokeColor="#7191BD" android:strokeWidth="3" android:strokeAlpha="0.55" />
+        <path android:pathData="M22,46 h12 M22,54 h12 M22,62 h9"
+            android:strokeColor="#7191BD" android:strokeWidth="3" android:strokeAlpha="0.55"
+            android:strokeLineCap="round" />
+    </group>
+    <path
+        android:pathData="M19,36 h16 a4,4 0 0 1 4,4 v24 a4,4 0 0 1 -4,4 h-16 a4,4 0 0 1 -4,-4 v-24 a4,4 0 0 1 4,-4 z"
+        android:strokeColor="#1D3357" android:strokeWidth="3" />
+    <path android:pathData="M22,46 h12 M22,54 h12 M22,62 h9"
+        android:strokeColor="#1D3357" android:strokeWidth="3" android:strokeLineCap="round" />
+</vector>

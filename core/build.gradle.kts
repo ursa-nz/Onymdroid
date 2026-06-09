@@ -37,6 +37,16 @@ tasks.register<JavaExec>("generateFixtures") {
     systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
 }
 
+// Streams dumps for a word list through this engine, the reference side of the onym-engine
+// total cross-diff against the Rust core.
+tasks.register<JavaExec>("batchDump") {
+    description = "Dump every word of a list for the onym-engine cross-diff."
+    group = "verification"
+    classpath = sourceSets["test"].runtimeClasspath
+    mainClass.set("nz.ursa.onymdroid.core.BatchDumpKt")
+    systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+}
+
 tasks.withType<Test>().configureEach {
     useJUnit()
     // Point the reader at a WordNet database for tests; defaults to the system install.

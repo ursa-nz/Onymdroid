@@ -1,5 +1,6 @@
 // SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
-// SPDX-License-Identifier: GPL-3.0-or-later
+// SPDX-FileCopyrightText: 2006 Princeton University
+// SPDX-License-Identifier: GPL-3.0-or-later AND LicenseRef-WordNet
 
 package nz.ursa.onymdroid.core
 

@@ -6,6 +6,12 @@ package nz.ursa.onymdroid.core
 import java.io.File
 
 /**
+ * The fixture file-name form: trimmed, spaces to underscores, mirroring `conformance/gen-fixtures`,
+ * which owns the convention. Shared by the kit's reader and FixtureGen's writer.
+ */
+internal fun toQueryForm(input: String): String = input.trim().replace(' ', '_')
+
+/**
  * The onym-engine conformance kit, the golden oracle the parity tests answer to. The kit lives in a
  * sibling checkout (override with `-Donym.conformance=/path`); its fixtures carry the spec's two
  * deliberate fixes, which is why the tests no longer diff against a live onym-cli. Fixtures are

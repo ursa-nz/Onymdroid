@@ -2,9 +2,8 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // The engine module: the result model and the JNI front over the shared onym-engine Rust
-// core, plus, until the cleanup step deletes them, the retired pure-Kotlin engine internals
-// under their unit tests. It has no Android dependency, so the boundary is enforced by the
-// build, not just by discipline.
+// core. It has no Android dependency, so the boundary is enforced by the build, not just by
+// discipline.
 plugins {
     alias(libs.plugins.kotlin.jvm)
 }
@@ -21,10 +20,6 @@ kotlin {
 }
 
 dependencies {
-    // extJWNL was the retired Kotlin engine's WordNet reader. It survives only on the test
-    // classpath, for the adapter the retired internals' unit tests still exercise, so the app
-    // ships without it; it leaves entirely when the cleanup step deletes those internals.
-    testImplementation(libs.extjwnl)
     testImplementation(libs.junit)
 }
 
@@ -53,8 +48,8 @@ val cargoJniHost = tasks.register<Exec>("cargoJniHost") {
     )
 }
 
-// Regenerates the onym-engine conformance fixtures from this engine, the reference
-// implementation until the Rust core takes over.
+// Regenerates the onym-engine conformance fixtures through the JNI front, one of the two
+// routes into the shared Rust core (conformance/gen-fixtures is the other).
 tasks.register<JavaExec>("generateFixtures") {
     description = "Regenerate the onym-engine conformance fixtures from this engine."
     group = "verification"

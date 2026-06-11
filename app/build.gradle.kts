@@ -154,6 +154,8 @@ android {
             // stray x86 directory the app cannot actually run from.
             abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
         }
+
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     compileOptions {
@@ -223,4 +225,14 @@ dependencies {
 
     implementation(libs.compose.ui.tooling.preview)
     debugImplementation(libs.compose.ui.tooling)
+
+    // The tree regression tests run on a device or emulator (./gradlew :app:connectedDebugAndroidTest),
+    // composing real entries through the packaged engine; the manifest artifact registers the
+    // test activity in the debug build the tests run against.
+    androidTestImplementation(platform(libs.compose.bom))
+    androidTestImplementation(libs.junit)
+    androidTestImplementation(libs.androidx.test.junit)
+    androidTestImplementation(libs.androidx.test.runner)
+    androidTestImplementation(libs.compose.ui.test.junit4)
+    debugImplementation(libs.compose.ui.test.manifest)
 }

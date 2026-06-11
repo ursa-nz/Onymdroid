@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -150,14 +151,18 @@ fun TreeSection(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Column(modifier = Modifier.padding(vertical = 6.dp)) {
-                nodes.forEach { node ->
-                    TreeNodeRow(
-                        node = node,
-                        depth = 0,
-                        navigable = navigable,
-                        expandedByDefault = expandedByDefault,
-                        onNavigate = onNavigate,
-                    )
+                nodes.forEachIndexed { index, node ->
+                    val path = "$title/$index"
+                    key(path) {
+                        TreeNodeRow(
+                            node = node,
+                            depth = 0,
+                            statePath = path,
+                            navigable = navigable,
+                            expandedByDefault = expandedByDefault,
+                            onNavigate = onNavigate,
+                        )
+                    }
                 }
             }
         }
@@ -168,12 +173,18 @@ fun TreeSection(
 private fun TreeNodeRow(
     node: OnymTreeNode,
     depth: Int,
+    statePath: String,
     navigable: Set<String>,
     expandedByDefault: Boolean,
     onNavigate: (String) -> Unit,
 ) {
     val hasChildren = node.children.isNotEmpty()
-    var expanded by rememberSaveable(node.label, depth) { mutableStateOf(expandedByDefault) }
+    // The open/closed state is saved under the node's path in its tree ([statePath]), never under
+    // the composition position: these rows all recurse from one call site, where positional
+    // saveable keys collide and saved state becomes order-dependent. The label input still resets
+    // the state when a different tree comes to occupy the same path, so a newly loaded word always
+    // starts from the user's preference.
+    var expanded by rememberSaveable(node.label, key = statePath) { mutableStateOf(expandedByDefault) }
     val rotation by animateFloatAsState(if (expanded) 90f else 0f, label = "treeChevron")
 
     Row(
@@ -205,14 +216,18 @@ private fun TreeNodeRow(
         TreeTerms(terms = node.terms, navigable = navigable, onNavigate = onNavigate)
     }
     if (hasChildren && expanded) {
-        node.children.forEach { child ->
-            TreeNodeRow(
-                node = child,
-                depth = depth + 1,
-                navigable = navigable,
-                expandedByDefault = expandedByDefault,
-                onNavigate = onNavigate,
-            )
+        node.children.forEachIndexed { index, child ->
+            val childPath = "$statePath/$index"
+            key(childPath) {
+                TreeNodeRow(
+                    node = child,
+                    depth = depth + 1,
+                    statePath = childPath,
+                    navigable = navigable,
+                    expandedByDefault = expandedByDefault,
+                    onNavigate = onNavigate,
+                )
+            }
         }
     }
 }

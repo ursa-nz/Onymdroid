@@ -3,125 +3,63 @@
 
 package nz.ursa.onymdroid.core
 
-import net.sf.extjwnl.dictionary.Dictionary
 import java.io.File
+import java.io.IOException
 import kotlin.random.Random
 
 /**
  * The engine's public face. It resolves a word to the [OnymResult] model, completes a typed prefix,
- * and suggests near-misses for a missed word. It is the only type the app needs: the WordNet reader,
- * the lemma index, and the relation mapping are all sealed behind it.
+ * and suggests near-misses for a missed word. It is the only type the app needs: behind it sits the
+ * shared onym-engine Rust core, reached through [NativeEngine], one JNI call and one decoded buffer
+ * per operation.
  */
 class OnymEngine private constructor(
-    private val lookup: WordNetLookup,
-    private val index: LemmaIndex,
+    private val handle: Long,
 ) {
     /**
      * Look [word] up. Returns null when the word is simply not in WordNet (distinct from a missing
      * database, which surfaces as an exception when the engine is opened).
      */
-    fun lookup(word: String): OnymResult? = lookup.lookup(word)
+    fun lookup(word: String): OnymResult? = NativeEngine.lookup(handle, word)?.let { OnymDecoder(it).entry() }
 
     /** Headwords beginning with [prefix], capped at [max] (0 means no cap). */
     fun complete(
         prefix: String,
         max: Int,
-    ): List<String> = index.complete(prefix, max)
+    ): List<String> = OnymDecoder(NativeEngine.complete(handle, prefix, max)).strings()
 
     /** Spelling suggestions for a missed [word], capped at [max] (0 means no cap). */
     fun suggest(
         word: String,
         max: Int,
-    ): List<String> = index.suggest(word, max)
+    ): List<String> = OnymDecoder(NativeEngine.suggest(handle, word, max)).strings()
 
     /** A random WordNet headword, for the dice "surprise me" action. */
-    fun randomWord(): String = index.randomWord(Random.Default)
+    fun randomWord(): String {
+        val count = NativeEngine.lemmaCount(handle).toInt()
+        if (count == 0) return ""
+        val lemma = NativeEngine.lemmaAt(handle, Random.Default.nextInt(count).toLong())
+        return if (lemma == null) "" else String(lemma, Charsets.UTF_8)
+    }
 
     /**
      * Render [word]'s entry in the onym-cli `--dump` text format. This exists so the engine can be
      * diffed, byte for byte, against the golden oracle; the app renders the model directly instead.
      */
-    fun dump(word: String): String =
-        buildString {
-            val result = lookup.lookup(word)
-            if (result == null) {
-                append("No entry for \"").append(word).append("\".\n")
-                val suggestions = index.suggest(word, SUGGEST_CAP)
-                if (suggestions.isNotEmpty()) {
-                    append("Did you mean: ").append(suggestions.joinToString(", ")).append('\n')
-                }
-            } else {
-                renderResult(result, this)
-            }
-        }
+    fun dump(word: String): String = String(NativeEngine.dump(handle, word), Charsets.UTF_8)
 
-    private fun renderResult(
-        result: OnymResult,
-        out: StringBuilder,
-    ) {
-        out.append("term: ").append(result.term).append('\n')
-        for (section in result.sections) {
-            out.append('[').append(section.title).append("]\n")
-            when (section) {
-                is OnymSection.Definitions -> section.items.forEach { renderDefinition(it, out) }
-                is OnymSection.Words -> section.items.forEach { out.append("  - ").append(it.term).append('\n') }
-                is OnymSection.Antonyms -> section.items.forEach { renderAntonym(it, out) }
-                is OnymSection.Tree -> section.items.forEach { renderTreeNode(it, 0, out) }
-            }
-        }
-    }
-
-    private fun renderDefinition(
-        definition: OnymDefinition,
-        out: StringBuilder,
-    ) {
-        if (definition.pos != null) {
-            out
-                .append("  - (")
-                .append(definition.pos)
-                .append(") ")
-                .append(definition.gloss)
-                .append('\n')
-        } else {
-            out.append("  - ").append(definition.gloss).append('\n')
-        }
-        definition.examples.forEach { out.append("      \"").append(it).append("\"\n") }
-    }
-
-    private fun renderAntonym(
-        antonym: OnymAntonym,
-        out: StringBuilder,
-    ) {
-        out
-            .append("  - ")
-            .append(antonym.term)
-            .append(if (antonym.direct) " (direct)\n" else " (indirect)\n")
-        antonym.implications.forEach { out.append("      -> ").append(it.term).append('\n') }
-    }
-
-    private fun renderTreeNode(
-        node: OnymTreeNode,
-        depth: Int,
-        out: StringBuilder,
-    ) {
-        repeat(depth + 1) { out.append("  ") }
-        out.append("- ").append(node.label).append('\n')
-        node.children.forEach { renderTreeNode(it, depth + 1, out) }
-    }
+    /**
+     * Free the native engine. The app never calls this (one engine lives for the process); tests
+     * that open engines do, to keep native memory bounded.
+     */
+    fun close() = NativeEngine.close(handle)
 
     companion object {
-        private const val SUGGEST_CAP = 5
-
         /**
-         * Open an engine over the WordNet database in [dataDir]. The directory must be writable: the
-         * reader opens the database read-write (see [nz.ursa.onymdroid.core] notes), so on Android the
-         * bundled data is unpacked to the files directory first.
+         * Open an engine over the WordNet database in [dataDir]. The directory is read in place,
+         * read-only; no copy and no writable requirement. A missing or unreadable database
+         * surfaces as an [IOException] naming the file that failed.
          */
-        fun open(dataDir: File): OnymEngine {
-            val dictionary: Dictionary = Dictionary.getFileBackedInstance(dataDir.absolutePath)
-            val source = ExtjwnlWordNetSource(dictionary, dataDir)
-            val index = LemmaIndex.build(dataDir)
-            return OnymEngine(WordNetLookup(source), index)
-        }
+        fun open(dataDir: File): OnymEngine = OnymEngine(OnymDecoder(NativeEngine.open(dataDir.absolutePath)).openHandle())
     }
 }

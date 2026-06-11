@@ -6,11 +6,12 @@ package nz.ursa.onymdroid.core
 import java.io.File
 
 /*
- * Streams dumps for a word list through one engine, the reference side of the onym-engine total
- * cross-diff: every WordNet headword is dumped by this engine and by the Rust core, and the two
- * outputs must be byte-identical. Each dump is preceded by a `==> word <==` marker line so a diff
- * names the word it belongs to; no dump line ever starts with `=`, so the marker is unambiguous.
- * The Rust side is `onym-dump --batch`, which reads the same list on stdin.
+ * Streams dumps for a word list through one engine, the JNI side of the onym-engine total
+ * cross-diff: every WordNet headword is dumped through the loaded native engine and by
+ * `onym-dump --batch` reading the same list on stdin, and the two outputs must be byte-identical,
+ * which proves the JNI boundary and the codec, not just the core underneath. Each dump is
+ * preceded by a `==> word <==` marker line so a diff names the word it belongs to; no dump line
+ * ever starts with `=`, so the marker is unambiguous.
  *
  * Run with: ./gradlew :core:batchDump --args="WORDLIST OUTFILE"
  */
@@ -20,7 +21,7 @@ fun main(args: Array<String>) {
     require(words.isFile) { "no word list at $words" }
     require(TestWordNet.available) { "WordNet data not installed" }
 
-    val engine = OnymEngine.open(TestWordNet.preparedDir())
+    val engine = OnymEngine.open(TestWordNet.directory)
     var dumps = 0
     File(args[1]).outputStream().buffered().use { out ->
         // The dictionary is ISO-8859-1 and the cross-diff compares bytes, so the word list and

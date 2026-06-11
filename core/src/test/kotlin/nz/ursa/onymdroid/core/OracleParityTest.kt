@@ -25,7 +25,8 @@ internal class OracleParityTest {
         fun setUp() {
             assumeTrue("WordNet data not installed", TestWordNet.available)
             assumeTrue("onym-engine conformance kit not found", ConformanceKit.available)
-            engine = OnymEngine.open(TestWordNet.preparedDir())
+            // The native engine reads the system database in place, read-only; no prepared copy.
+            engine = OnymEngine.open(TestWordNet.directory)
         }
     }
 

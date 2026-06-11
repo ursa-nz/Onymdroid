@@ -6,10 +6,10 @@ package nz.ursa.onymdroid.core
 import java.io.File
 
 /*
- * Regenerates the onym-engine conformance fixtures from this engine. The Kotlin engine is the
- * reference implementation of the onym-engine spec until the Rust core takes over, so this tool is
- * temporary scaffolding: it writes the same tree conformance/gen-fixtures does, in one JVM, by
- * calling the engine directly instead of capturing a dumper's stdout once per word.
+ * Regenerates the onym-engine conformance fixtures, writing the same tree conformance/gen-fixtures
+ * does, in one JVM, by calling the engine directly instead of capturing a dumper's stdout once per
+ * word. The engine is the shared Rust core through JNI, so the two generators are two routes into
+ * one implementation; fixtures still change only via a spec change.
  *
  * Run with: ./gradlew :core:generateFixtures --args=/path/to/onym-engine
  */
@@ -27,7 +27,7 @@ fun main(args: Array<String>) {
     require(corpus.isFile) { "no corpus at $corpus" }
     require(TestWordNet.available) { "WordNet data not installed" }
 
-    val engine = OnymEngine.open(TestWordNet.preparedDir())
+    val engine = OnymEngine.open(TestWordNet.directory)
     val fixtures = File(repo, "conformance/fixtures")
     require(fixtures.deleteRecursively()) { "could not clear $fixtures" }
     val dump = File(fixtures, "dump").apply { mkdirs() }

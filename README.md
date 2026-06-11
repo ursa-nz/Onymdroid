@@ -48,10 +48,10 @@ so scrolling feels laggy. The release build is the representative one.
 
 ### Releasing
 
-The release build is minified and resource-shrunk with R8. extJWNL loads its dictionary and
-morphology implementations by reflection, so its package is kept (see
-`app/proguard-rules.pro`); the build also packages the Compose libraries' baseline profiles,
-so it scrolls smoothly. Release signing is read from a `keystore.properties` at the
+The release build is minified and resource-shrunk with R8. The lookup engine is the shared
+onym-engine Rust core, built by cargo from the sibling checkout for each packaged ABI and
+loaded over JNI, so a build needs rustup (with the Android targets) and an NDK; the build
+also packages the Compose libraries' baseline profiles, so it scrolls smoothly. Release signing is read from a `keystore.properties` at the
 repository root, which is never committed:
 
 ```properties

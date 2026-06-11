@@ -17,7 +17,8 @@ internal class BroadParityTest {
     fun corpusMatchesFixtures() {
         assumeTrue("WordNet data not installed", TestWordNet.available)
         assumeTrue("onym-engine conformance kit not found", ConformanceKit.available)
-        val engine = OnymEngine.open(TestWordNet.preparedDir())
+        // The native engine reads the system database in place, read-only; no prepared copy.
+        val engine = OnymEngine.open(TestWordNet.directory)
 
         val mismatches = ArrayList<String>()
         val report = StringBuilder()
@@ -34,6 +35,7 @@ internal class BroadParityTest {
                 report.appendLine("  engine:  ${a.getOrNull(diff ?: 0)}")
             }
         }
+        engine.close()
         assertEquals(
             "broad parity mismatches over ${ConformanceKit.corpus.size} words (${mismatches.size}):\n$report",
             0,

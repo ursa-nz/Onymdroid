@@ -17,15 +17,17 @@ network, no accounts, and no background work.
 
 ## Status
 
-v0.1. The lexical engine is a Kotlin reimplementation of Onym's lookup logic (itself
-derived from Artha), and its output matches the upstream `onym-cli` golden oracle both on
-the focused acceptance cases and across a broad stratified sweep of the vocabulary.
+v0.2. The lexical engine is [onym-engine](https://forge.ursa.nz/ursa-nz/onym-engine), the
+shared Rust core Onym also uses, loaded over JNI. Its output answers to the engine's
+conformance kit, and a cross-diff of every WordNet headword through the JNI path is
+byte-identical to the engine's own CLI.
 
 ## Architecture
 
 - **`:core`** — a pure-Kotlin module, with no Android dependencies, holding the immutable
-  result model, the lookup and relation-mapping logic, completion and suggestion, and the
-  `WordNetSource` adapter behind which the WordNet reader is sealed.
+  result model and the JNI front over the shared onym-engine Rust core: a loader with one
+  external function per operation, and a decoder that rebuilds the model from the engine's
+  serialised buffer.
 - **`:app`** — a Jetpack Compose (Material 3 and Material You) front end and its
   ViewModel. The UI is adaptive: a list-detail layout that shows a single pane on a phone
   and a search pane beside the word detail on a tablet or unfolded foldable. It draws edge
@@ -71,7 +73,7 @@ That signed APK is what the [software.ursa.nz](https://software.ursa.nz/fdroid/r
 repository serves; F-Droid distributes it as-is, so the app-signing key must stay constant
 across releases.
 
-## Out of scope for v0.1
+## Out of scope
 
 These are deliberately absent, not stubbed:
 
@@ -91,8 +93,10 @@ These are deliberately absent, not stubbed:
 
 - Word data from [WordNet](https://wordnet.princeton.edu), the lexical database from
   Princeton University.
-- The lookup logic is derived from [Artha](https://github.com/sria91/artha), an earlier
-  WordNet thesaurus by Sundaram Ramaswamy.
+- The lookup engine is [onym-engine](https://forge.ursa.nz/ursa-nz/onym-engine),
+  GPL-3.0-or-later, whose behaviour derives from [Artha](https://github.com/sria91/artha),
+  an earlier WordNet thesaurus by Sundaram Ramaswamy; the derivation is recorded in that
+  repository's PROVENANCE.md.
 - The interface uses the [Lora](https://github.com/cyrealtype/Lora-Cyrillic) serif and the
   [Roboto Flex](https://github.com/googlefonts/roboto-flex) body face, both from the Google
   Fonts project under the SIL Open Font Licence. They are bundled, not fetched at runtime, so

@@ -1,0 +1,107 @@
+# SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+# SPDX-License-Identifier: GPL-3.0-or-later
+name: Bug report
+about: Report something in Onymdroid that does not work as it should
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a problem. Please fill in what you can so the issue can be reproduced.
+  - type: input
+    id: version
+    attributes:
+      label: Onymdroid version
+      description: Shown on the About screen, or the release you installed.
+      placeholder: e.g. 0.3.0
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install Onymdroid?
+      options:
+        - Release APK from the forge
+        - F-Droid
+        - Built from source
+        - Other (note below)
+    validations:
+      required: true
+  - type: input
+    id: android
+    attributes:
+      label: Android version
+      description: Onymdroid requires Android 16 (API 36) or newer.
+      placeholder: e.g. Android 16 (API 36)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+      placeholder: e.g. Pixel 8, Galaxy S24
+    validations:
+      required: true
+  - type: dropdown
+    id: form
+    attributes:
+      label: Device type
+      options:
+        - Phone
+        - Tablet
+        - Foldable
+        - Other (note below)
+    validations:
+      required: true
+  - type: dropdown
+    id: abi
+    attributes:
+      label: Architecture (ABI)
+      description: Found under Settings or a system info app if you are unsure.
+      options:
+        - arm64-v8a
+        - armeabi-v7a
+        - x86_64
+        - x86
+        - Not sure
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: What you did, in order. Include the word you looked up if it matters.
+      placeholder: |
+        1. Open Onymdroid
+        2. Search for "serendipity"
+        3. Open the "kinds" tree on the first sense
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logcat (if you have it)
+      description: A crash stack trace or relevant logcat output. This will be formatted as a code block automatically.
+      render: shell
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched the existing issues and this is not a duplicate.
+          required: true

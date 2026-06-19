@@ -6,6 +6,7 @@ package nz.ursa.onymdroid.ui.components
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -234,7 +235,9 @@ private fun TreeNodeRow(
 
 /**
  * The terms of one tree node rendered inline: each headword term is tappable and underlined-feeling
- * via the primary colour, each non-headword term greyed, joined by commas.
+ * via the primary colour, each non-headword term greyed, joined by commas. A long press copies any
+ * term — the bare term, never the joining comma its label may carry — matching the desktop, where
+ * tree terms are chips with the same copy menu.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -246,6 +249,17 @@ private fun TreeTerms(
     FlowRow(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         terms.forEachIndexed { index, term ->
             val isNavigable = term in navigable
+            val gestures =
+                if (isNavigable) {
+                    Modifier.combinedClickable(
+                        onLongClickLabel = COPY_ACTION_LABEL,
+                        onLongClick = rememberCopyTerm(term),
+                        hapticFeedbackEnabled = true,
+                        onClick = { onNavigate(term) },
+                    )
+                } else {
+                    Modifier.longPressCopy(term)
+                }
             Text(
                 text = if (index < terms.lastIndex) "$term," else term,
                 style = MaterialTheme.typography.bodyLarge,
@@ -255,10 +269,7 @@ private fun TreeTerms(
                     } else {
                         MaterialTheme.colorScheme.onSurfaceVariant
                     },
-                modifier =
-                    Modifier
-                        .then(if (isNavigable) Modifier.clickable { onNavigate(term) } else Modifier)
-                        .padding(end = 6.dp),
+                modifier = gestures.padding(end = 6.dp),
             )
         }
     }

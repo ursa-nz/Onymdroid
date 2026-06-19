@@ -7,6 +7,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -20,12 +22,14 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 
 /** The container/label colour pair a chip is tinted with, chosen per section by the caller. */
@@ -56,7 +60,8 @@ object ChipTones {
 /**
  * A word chip. A navigable term — one that is itself a headword — is tinted with [tone], carries a
  * ↗ arrow, and is tappable, springing its corners a touch when pressed (the Expressive "squish").
- * A non-navigable term is drawn greyed and outlined with no arrow and does not respond to touch.
+ * A non-navigable term is drawn greyed and outlined with no arrow and does not navigate. Either
+ * way, a long press copies the term, mirroring the desktop's right-click copy menu.
  */
 @Composable
 fun WordChip(
@@ -72,7 +77,7 @@ fun WordChip(
             color = MaterialTheme.colorScheme.surfaceContainerHighest,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-            modifier = modifier,
+            modifier = modifier.longPressCopy(label),
         ) {
             Text(
                 text = label,
@@ -90,18 +95,30 @@ fun WordChip(
         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium),
         label = "chipCorner",
     )
+    val copyTerm = rememberCopyTerm(label)
+    // Surface's clickable form has no long-press slot, so the chip is a plain surface with a
+    // combinedClickable inside its clip: tap navigates, long press copies (with the standard
+    // haptic). minimumInteractiveComponentSize keeps the 48 dp slot the clickable Surface gave.
     Surface(
-        onClick = onClick,
         shape = RoundedCornerShape(corner),
         color = tone.container,
         contentColor = tone.onContainer,
-        interactionSource = interactionSource,
-        modifier = modifier,
+        modifier = modifier.minimumInteractiveComponentSize(),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(4.dp),
-            modifier = Modifier.padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+            modifier =
+                Modifier
+                    .combinedClickable(
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
+                        role = Role.Button,
+                        onLongClickLabel = COPY_ACTION_LABEL,
+                        onLongClick = copyTerm,
+                        hapticFeedbackEnabled = true,
+                        onClick = onClick,
+                    ).padding(start = 16.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
         ) {
             Text(text = label, style = MaterialTheme.typography.labelLarge)
             Icon(

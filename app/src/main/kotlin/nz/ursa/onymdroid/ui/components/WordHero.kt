@@ -93,8 +93,10 @@ fun WordHero(
                 // The headword shrinks to fit the card width on a single line, so a long term like
                 // "unrelentingly" stays whole rather than wrapping its last letters; it only steps down
                 // from the display size as needed, and reaches the floor size for very long words.
+                // A long press on it copies the term, as on the desktop's headword.
                 BasicText(
                     text = term,
+                    modifier = Modifier.longPressCopy(term),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                     style =

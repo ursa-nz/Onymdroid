@@ -3,6 +3,7 @@
 
 import java.util.Properties
 import javax.inject.Inject
+import org.gradle.process.ExecOperations
 
 // The Android application: a Jetpack Compose (Material 3 / Material You) front end over the
 // pure-Kotlin :core engine. Dependencies point inward — this module may see :core, but
@@ -137,6 +138,48 @@ val packRustJniLibs =
         outputDir.set(rustJniLibs)
     }
 
+// The WordNet data the app ships, prepared from the onym-data submodule into the APK assets at build
+// time, the base graph and the etymology overlay together. There is no vendored copy in the tree;
+// the submodule is the single source. WordNetAssets unpacks it from assets to app storage on first
+// run. prepare.sh decompresses the vendored blob with no network.
+val onymDataDir = rootProject.layout.projectDirectory.dir("onym-data")
+
+abstract class PrepareWordnetAssetsTask : DefaultTask() {
+    @get:Inject
+    abstract val execOps: ExecOperations
+
+    @get:InputFile
+    abstract val prepareScript: RegularFileProperty
+
+    @get:InputFiles
+    abstract val dataInputs: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun prepare() {
+        val wordnet = outputDir.get().dir("wordnet").asFile
+        wordnet.deleteRecursively()
+        wordnet.mkdirs()
+        execOps.exec {
+            commandLine(prepareScript.get().asFile.absolutePath, wordnet.absolutePath)
+        }
+    }
+}
+
+val prepareWordnetAssets =
+    tasks.register<PrepareWordnetAssetsTask>("prepareWordnetAssets") {
+        description = "Prepare the WordNet assets from the onym-data submodule."
+        group = "build"
+        prepareScript.set(onymDataDir.file("prepare.sh"))
+        dataInputs.from(
+            onymDataDir.file("base/wndb.tar.zst"),
+            onymDataDir.file("overlays/etym.onym"),
+        )
+        outputDir.set(layout.buildDirectory.dir("wordnetAssets"))
+    }
+
 android {
     namespace = "nz.ursa.onymdroid"
     compileSdk = 36
@@ -193,6 +236,7 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.sources.jniLibs?.addGeneratedSourceDirectory(packRustJniLibs, PackRustJniLibsTask::outputDir)
+        variant.sources.assets?.addGeneratedSourceDirectory(prepareWordnetAssets, PrepareWordnetAssetsTask::outputDir)
     }
 }
 

@@ -48,15 +48,36 @@ val cargoJniHost = tasks.register<Exec>("cargoJniHost") {
     )
 }
 
+// The WordNet base for the host parity suite and tools, prepared from the onym-data submodule,
+// base-only, since the conformance fixtures are overlay-free. The submodule supplies the data the
+// app ships, so the host tests answer for the same bytes. -Donym.wordnet.dir overrides it.
+val onymDataDir = rootProject.layout.projectDirectory.dir("onym-data")
+val preparedWordnetBase = layout.buildDirectory.dir("wordnet-base")
+val prepareWordnetBase = tasks.register<Exec>("prepareWordnetBase") {
+    description = "Prepare the WordNet base from the onym-data submodule for host tests."
+    group = "build"
+    val script = onymDataDir.file("prepare.sh").asFile
+    onlyIf { script.exists() }
+    inputs.files(onymDataDir.file("prepare.sh"), onymDataDir.file("base/wndb.tar.zst"))
+    outputs.dir(preparedWordnetBase)
+    commandLine(script.absolutePath, "--base-only", preparedWordnetBase.get().asFile.absolutePath)
+}
+
+// The data directory the host tests read: an explicit -Donym.wordnet.dir, or the prepared base.
+fun wordnetDir(): String =
+    providers
+        .systemProperty("onym.wordnet.dir")
+        .getOrElse(preparedWordnetBase.get().asFile.absolutePath)
+
 // Regenerates the onym-engine conformance fixtures through the JNI front, one of the two
 // routes into the shared Rust core (conformance/gen-fixtures is the other).
 tasks.register<JavaExec>("generateFixtures") {
     description = "Regenerate the onym-engine conformance fixtures from this engine."
     group = "verification"
-    dependsOn(cargoJniHost)
+    dependsOn(cargoJniHost, prepareWordnetBase)
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("nz.ursa.onymdroid.core.FixtureGenKt")
-    systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+    systemProperty("onym.wordnet.dir", wordnetDir())
     systemProperty("java.library.path", File(onymEngineDir, "target/release").absolutePath)
 }
 
@@ -65,20 +86,20 @@ tasks.register<JavaExec>("generateFixtures") {
 tasks.register<JavaExec>("batchDump") {
     description = "Dump every word of a list for the onym-engine cross-diff."
     group = "verification"
-    dependsOn(cargoJniHost)
+    dependsOn(cargoJniHost, prepareWordnetBase)
     classpath = sourceSets["test"].runtimeClasspath
     mainClass.set("nz.ursa.onymdroid.core.BatchDumpKt")
-    systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+    systemProperty("onym.wordnet.dir", wordnetDir())
     systemProperty("java.library.path", File(onymEngineDir, "target/release").absolutePath)
 }
 
 tasks.withType<Test>().configureEach {
     useJUnit()
     // The native engine library, built fresh so the parity suite answers for the real core.
-    dependsOn(cargoJniHost)
+    dependsOn(cargoJniHost, prepareWordnetBase)
     systemProperty("java.library.path", File(onymEngineDir, "target/release").absolutePath)
-    // Point the reader at a WordNet database for tests; defaults to the system install.
-    systemProperty("onym.wordnet.dir", providers.systemProperty("onym.wordnet.dir").getOrElse("/usr/share/wordnet"))
+    // The WordNet base, prepared from the onym-data submodule; the tests skip if it is absent.
+    systemProperty("onym.wordnet.dir", wordnetDir())
     // The onym-engine conformance kit, the golden oracle; a sibling checkout by default, and the
     // parity tests skip if it is absent.
     systemProperty(

@@ -10,14 +10,14 @@ import org.junit.Test
 // Parity sweep of the JNI binding over the whole onym-engine conformance corpus (a stratified
 // sample of the vocabulary plus every edge case the spec names): the engine's --dump output must
 // match the owned golden masters byte for byte. Guards the long tail of the engine against
-// regressions, and skipped unless both the system WordNet data and the conformance kit are present;
+// regressions, and skipped unless both the prepared WordNet base and the conformance kit are present;
 // any mismatch is reported in full in the assertion message.
 internal class BroadParityTest {
     @Test
     fun corpusMatchesFixtures() {
-        assumeTrue("WordNet data not installed", TestWordNet.available)
+        assumeTrue("WordNet base not prepared", TestWordNet.available)
         assumeTrue("onym-engine conformance kit not found", ConformanceKit.available)
-        // The native engine reads the system database in place, read-only; no prepared copy.
+        // The native engine reads the prepared base in place, read-only.
         val engine = OnymEngine.open(TestWordNet.directory)
 
         val mismatches = ArrayList<String>()

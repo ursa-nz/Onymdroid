@@ -26,6 +26,15 @@ precedence = "aggregate"
 SPDX-FileCopyrightText = "2006 Princeton University"
 SPDX-License-Identifier = "LicenseRef-WordNet"
 
+# The etymology overlay is the one bundled file that is not WordNet: it is built from Wiktionary,
+# via the wiktextract dataset, and is licensed CC-BY-SA-3.0. This entry is more specific than the
+# wordnet glob above and, coming after it, overrides it for that single file.
+[[annotations]]
+path = "app/src/main/assets/wordnet/etym.onym"
+precedence = "override"
+SPDX-FileCopyrightText = "© Wiktionary contributors (https://en.wiktionary.org)"
+SPDX-License-Identifier = "CC-BY-SA-3.0"
+
 # Bundled UI fonts: Lora (the serif used for the headword and headings) and Roboto Flex (the
 # body face), both from the Google Fonts project under the SIL Open Font Licence. Bundled rather
 # than fetched at runtime so the app needs no Google Play Services. Binaries carry no inline header.

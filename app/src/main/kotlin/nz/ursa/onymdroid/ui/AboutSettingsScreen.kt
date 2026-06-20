@@ -86,7 +86,8 @@ fun AboutSettingsRoute(
 
 /**
  * The combined About and Settings screen. It carries the project's attributions — WordNet from
- * Princeton, the onym-engine core and its Artha lineage, and the acknowledgement of Country — and
+ * Princeton, etymology from Wiktionary, the onym-engine core and its Artha lineage, and the
+ * acknowledgement of Country — and
  * the app's single preference: whether relation trees open expanded by default. The preference is
  * persisted in DataStore by the ViewModel.
  */
@@ -147,6 +148,13 @@ fun AboutSettingsScreen(
                 body =
                     "The lookup engine is onym-engine, a shared Rust core whose behaviour derives " +
                         "from Artha, an earlier WordNet thesaurus by Sundaram Ramaswamy, under the GPL.",
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Attribution(
+                heading = "Etymology from Wiktionary",
+                body =
+                    "Word origins come from Wiktionary, via the wiktextract dataset, under the " +
+                        "CC-BY-SA-3.0 licence.",
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Attribution(

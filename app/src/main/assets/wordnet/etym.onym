@@ -1,5 +1,6 @@
  etym.onym v1
- source: kaikki.org English wiktextract
+ source: kaikki.org English wiktextract (a parse of the English Wiktionary)
+ licence: CC-BY-SA-3.0, © Wiktionary contributors; https://en.wiktionary.org
  wordnet-lemmas: 147306
  matched-lemmas: 65031
  english-entries: 1473332

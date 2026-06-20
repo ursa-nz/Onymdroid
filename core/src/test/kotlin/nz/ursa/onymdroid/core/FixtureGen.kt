@@ -34,7 +34,7 @@ fun main(args: Array<String>) {
     val complete = File(fixtures, "complete").apply { mkdirs() }
     val suggest = File(fixtures, "suggest").apply { mkdirs() }
 
-    // The dictionary files are ISO-8859-1, and the oracle emitted their bytes untouched, so the
+    // The dictionary files are ISO-8859-1, and the dumper emits their bytes untouched, so the
     // fixtures are written in the same encoding rather than the platform default.
     fun File.writeFixture(text: String) = writeBytes(text.toByteArray(Charsets.ISO_8859_1))
 

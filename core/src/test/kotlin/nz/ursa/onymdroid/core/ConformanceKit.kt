@@ -12,10 +12,11 @@ import java.io.File
 internal fun toQueryForm(input: String): String = input.trim().replace(' ', '_')
 
 /**
- * The onym-engine conformance kit, the golden oracle the parity tests answer to. The kit lives in a
- * sibling checkout (override with `-Donym.conformance=/path`); its fixtures carry the spec's two
- * deliberate fixes, which is why the tests no longer diff against a live onym-cli. Fixtures are
- * written in the dictionary's ISO-8859-1, so they are read the same way.
+ * The onym-engine conformance kit: the owned golden masters the parity test answers to. The kit
+ * lives in a sibling checkout (override with `-Donym.conformance=/path`); its fixtures are generated
+ * by onym-dump and carry the spec's two deliberate fixes, so the tests diff against the committed
+ * fixtures rather than any live tool. Fixtures are written in the dictionary's ISO-8859-1, so they
+ * are read the same way.
  */
 internal object ConformanceKit {
     private val root: File = File(System.getProperty("onym.conformance", ""))

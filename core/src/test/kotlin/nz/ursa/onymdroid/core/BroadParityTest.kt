@@ -7,11 +7,11 @@ import org.junit.Assert.assertEquals
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 
-// Broad parity sweep over the whole onym-engine conformance corpus (a stratified sample of the
-// vocabulary plus every edge case the spec names), guarding the long tail of the engine against
-// regressions. Heavier than the focused OracleParityTest, and skipped unless both the system
-// WordNet data and the conformance kit are present; any mismatch is reported in full in the
-// assertion message.
+// Parity sweep of the JNI binding over the whole onym-engine conformance corpus (a stratified
+// sample of the vocabulary plus every edge case the spec names): the engine's --dump output must
+// match the owned golden masters byte for byte. Guards the long tail of the engine against
+// regressions, and skipped unless both the system WordNet data and the conformance kit are present;
+// any mismatch is reported in full in the assertion message.
 internal class BroadParityTest {
     @Test
     fun corpusMatchesFixtures() {

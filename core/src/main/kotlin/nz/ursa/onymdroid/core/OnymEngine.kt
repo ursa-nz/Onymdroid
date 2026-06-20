@@ -43,8 +43,9 @@ class OnymEngine private constructor(
     }
 
     /**
-     * Render [word]'s entry in the onym-cli `--dump` text format. This exists so the engine can be
-     * diffed, byte for byte, against the golden oracle; the app renders the model directly instead.
+     * Render [word]'s entry in the `--dump` text format of `spec/dump-format.md`. This exists so the
+     * engine can be diffed, byte for byte, against the owned conformance fixtures; the app renders
+     * the model directly instead.
      */
     fun dump(word: String): String = String(NativeEngine.dump(handle, word), Charsets.UTF_8)
 

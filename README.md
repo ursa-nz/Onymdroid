@@ -17,10 +17,11 @@ network, no accounts, and no background work.
 
 ## Status
 
-v0.2. The lexical engine is [onym-engine](https://forge.ursa.nz/ursa-nz/onym-engine), the
+v0.4. The lexical engine is [onym-engine](https://forge.ursa.nz/ursa-nz/onym-engine), the
 shared Rust core Onym also uses, loaded over JNI. Its output answers to the engine's
 conformance kit, and a cross-diff of every WordNet headword through the JNI path is
-byte-identical to the engine's own CLI.
+byte-identical to the engine's own CLI. The WordNet data comes from the `onym-data` submodule,
+bundled into the APK at build time.
 
 ## Architecture
 
@@ -39,9 +40,11 @@ never sees an Android one.
 
 ## Building
 
-Requires the Android SDK (platform 36, build-tools 36.1.0) and JDK 21.
+Requires the Android SDK (platform 36, build-tools 36.1.0) and JDK 21. The build prepares the
+bundled WordNet data from the `onym-data` submodule, so initialise it first.
 
 ```sh
+git submodule update --init
 ./gradlew :app:assembleDebug
 ```
 

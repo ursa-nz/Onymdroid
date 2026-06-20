@@ -30,7 +30,7 @@ val onymEngineDir =
     File(
         providers.systemProperty("onym.engine.dir").getOrElse(
             rootProject.layout.projectDirectory
-                .dir("../onym-engine")
+                .dir("../core")
                 .asFile.absolutePath,
         ),
     )

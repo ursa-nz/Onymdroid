@@ -26,7 +26,7 @@ dependencies {
 // The onym-engine checkout, the same sibling convention the conformance kit default uses.
 val onymEngineDir = File(
     providers.systemProperty("onym.engine.dir").getOrElse(
-        rootProject.layout.projectDirectory.dir("../onym-engine").asFile.absolutePath,
+        rootProject.layout.projectDirectory.dir("../core").asFile.absolutePath,
     ),
 )
 
@@ -87,7 +87,7 @@ tasks.withType<Test>().configureEach {
             .systemProperty("onym.conformance")
             .getOrElse(
                 rootProject.layout.projectDirectory
-                    .dir("../onym-engine/conformance")
+                    .dir("../core/conformance")
                     .asFile.absolutePath,
             ),
     )

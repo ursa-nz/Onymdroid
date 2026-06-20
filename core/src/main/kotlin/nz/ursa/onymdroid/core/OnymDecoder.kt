@@ -49,6 +49,7 @@ internal class OnymDecoder(bytes: ByteArray) {
             1 -> OnymSection.Words(title, stringList().map(::OnymWord))
             2 -> OnymSection.Antonyms(title, List(count()) { antonym() })
             3 -> OnymSection.Tree(title, treeNodes())
+            4 -> OnymSection.Etymology(title, stringList())
             else -> error("unknown section kind $kind")
         }
     }

@@ -245,6 +245,9 @@ private fun termsToCheck(result: OnymResult): List<String> = buildList {
 
             // Definitions carry no navigable terms.
             is OnymSection.Definitions -> {}
+
+            // Etymology is prose, not navigable terms.
+            is OnymSection.Etymology -> {}
         }
     }
 }

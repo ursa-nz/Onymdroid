@@ -11,6 +11,7 @@ import androidx.compose.material.icons.rounded.Bolt
 import androidx.compose.material.icons.rounded.Category
 import androidx.compose.material.icons.rounded.Extension
 import androidx.compose.material.icons.rounded.FormatListNumbered
+import androidx.compose.material.icons.rounded.HistoryEdu
 import androidx.compose.material.icons.rounded.Hub
 import androidx.compose.material.icons.rounded.JoinInner
 import androidx.compose.material.icons.rounded.Link
@@ -40,5 +41,6 @@ fun iconForSection(title: String): ImageVector = when (title) {
     "Part of" -> Icons.Rounded.Extension
     "Parts" -> Icons.Rounded.Widgets
     "Domains" -> Icons.Rounded.Category
+    "Etymology" -> Icons.Rounded.HistoryEdu
     else -> Icons.Rounded.Hub
 }

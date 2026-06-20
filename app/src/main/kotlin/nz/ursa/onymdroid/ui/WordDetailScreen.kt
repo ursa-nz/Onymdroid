@@ -29,6 +29,7 @@ import nz.ursa.onymdroid.core.OnymSection
 import nz.ursa.onymdroid.ui.components.AntonymSection
 import nz.ursa.onymdroid.ui.components.ChipTones
 import nz.ursa.onymdroid.ui.components.DefinitionList
+import nz.ursa.onymdroid.ui.components.EtymologySection
 import nz.ursa.onymdroid.ui.components.SectionHeader
 import nz.ursa.onymdroid.ui.components.TreeSection
 import nz.ursa.onymdroid.ui.components.WordChip
@@ -161,6 +162,15 @@ private fun LazyListScope.renderSection(
                     navigable = navigable,
                     expandedByDefault = treeExpandedByDefault,
                     onNavigate = onNavigate,
+                )
+            }
+        }
+
+        is OnymSection.Etymology -> {
+            item(key = section.title) {
+                EtymologySection(
+                    title = section.title,
+                    paragraphs = section.paragraphs,
                 )
             }
         }

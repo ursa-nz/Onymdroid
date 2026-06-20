@@ -43,6 +43,13 @@ sealed interface OnymSection {
         override val title: String,
         val items: List<OnymTreeNode>,
     ) : OnymSection
+
+    /** Etymology prose: one or more paragraphs to read, not terms to navigate. From the optional
+     *  overlay, so present only when the looked-up headword has an entry. */
+    data class Etymology internal constructor(
+        override val title: String,
+        val paragraphs: List<String>,
+    ) : OnymSection
 }
 
 /** A single activatable term, such as a synonym, in display form. */

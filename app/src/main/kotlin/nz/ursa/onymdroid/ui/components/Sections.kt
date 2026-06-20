@@ -17,8 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -35,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.text.font.FontStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import nz.ursa.onymdroid.core.OnymAntonym
 import nz.ursa.onymdroid.core.OnymTreeNode
@@ -122,6 +126,61 @@ fun AntonymSection(
                                     onClick = { onNavigate(implication.term) },
                                 )
                             }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The etymology section: prose paragraphs to read, not terms to navigate. Drawn as the same tonal
+ * card as the definitions, each origin a numbered row (a word with several etymologies shows one
+ * paragraph each), inside a SelectionContainer so the prose can be copied.
+ */
+@Composable
+fun EtymologySection(
+    title: String,
+    paragraphs: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        SectionHeader(title = title, icon = iconForSection(title))
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            SelectionContainer {
+                Column {
+                    paragraphs.forEachIndexed { index, paragraph ->
+                        if (index > 0) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(9.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.size(28.dp),
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = (index + 1).toString(),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                            Text(
+                                text = paragraph,
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
                         }
                     }
                 }

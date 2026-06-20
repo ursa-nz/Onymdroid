@@ -19,7 +19,7 @@ object WordNetAssets {
     private const val TARGET_DIR = "wordnet"
 
     /** The bundled-data revision; bump when the assets under `wordnet/` change. */
-    private const val VERSION = 2
+    private const val VERSION = 4
 
     /**
      * Ensure the database is present on local storage and return its directory.

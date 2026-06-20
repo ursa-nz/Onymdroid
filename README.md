@@ -86,8 +86,9 @@ These are deliberately absent, not stubbed:
 - Kotlin Multiplatform
 - A custom, app-specific baseline profile — the release packages the Compose libraries'
   own baseline profiles, which is enough for smooth scrolling
-- In-repository continuous integration — release APKs are built and signed locally and
-  published through the separate `software.ursa.nz` deploy repository
+- Automated F-Droid publishing — a tag builds and signs the release APK in CI (see
+  [CI.md](CI.md)), but pushing it to the `software.ursa.nz` repository stays a manual
+  `fdroid update` so the live repository keeps a human gate
 
 ## Attribution
 

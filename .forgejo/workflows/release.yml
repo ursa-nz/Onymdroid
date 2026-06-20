@@ -1,0 +1,149 @@
+# SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+# Release pipeline. On a version tag (v*), builds a release-signed APK with the onym app key
+# (injected from Forgejo Actions secrets) and attaches it to the tag's Forgejo release.
+#
+# This stops at the signed artifact: publishing to the software.ursa.nz F-Droid repo stays a
+# manual `fdroid update` against /opt/fdroid/repo on atutahi, so the live repo keeps a human
+# gate and the F-Droid index key never enters CI. See CI.md for the publish runbook.
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    container:
+      image: catthehacker/ubuntu:act-22.04
+    env:
+      ANDROID_SDK_ROOT: /opt/android-sdk
+      ANDROID_HOME: /opt/android-sdk
+      NDK_VERSION: "28.2.13676358"
+      RUST_VERSION: "1.96.0"
+      ENGINE_REF: main
+    steps:
+      - name: Check out Onymdroid
+        uses: actions/checkout@v4
+
+      - name: Check out onym-engine (latest)
+        run: |
+          set -eux
+          git clone --depth 1 --branch "$ENGINE_REF" \
+            https://forge.ursa.nz/ursa-nz/onym-engine.git onym-engine
+          echo "engine_dir=$GITHUB_WORKSPACE/onym-engine" >> "$GITHUB_ENV"
+          echo "onym-engine @ $(git -C onym-engine rev-parse HEAD)" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Set up JDK 21
+        uses: https://github.com/actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Cache Android SDK + NDK
+        uses: https://github.com/actions/cache@v4
+        with:
+          path: /opt/android-sdk
+          key: android-sdk-p36-bt36.1.0-ndk${{ env.NDK_VERSION }}
+
+      - name: Install Android SDK + NDK
+        run: |
+          set -eux
+          sdk="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin"
+          if [ ! -x "$sdk/sdkmanager" ]; then
+            mkdir -p "$ANDROID_SDK_ROOT/cmdline-tools"
+            curl -sSLo /tmp/cmdtools.zip \
+              https://dl.google.com/android/repository/commandlinetools-linux-11076708_latest.zip
+            unzip -q /tmp/cmdtools.zip -d /tmp/cmdtools
+            mv /tmp/cmdtools/cmdline-tools "$ANDROID_SDK_ROOT/cmdline-tools/latest"
+          fi
+          export PATH="$sdk:$PATH"
+          # `run:` steps execute under `bash -eo pipefail`; `yes` takes SIGPIPE (141) when
+          # sdkmanager stops reading. Drop pipefail for just this pipe so the real exit status
+          # is sdkmanager's, not the broken-pipe signal.
+          ( set +o pipefail; yes | sdkmanager --licenses >/dev/null )
+          sdkmanager --install "platform-tools" "platforms;android-36" \
+            "build-tools;36.1.0" "ndk;$NDK_VERSION" >/dev/null
+          echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$NDK_VERSION" >> "$GITHUB_ENV"
+
+      - name: Cache Cargo + Gradle
+        uses: https://github.com/actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            ~/.rustup/toolchains
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            onym-engine/target
+          key: build-${{ hashFiles('gradle/libs.versions.toml', 'onym-engine/Cargo.lock') }}
+          restore-keys: build-
+
+      - name: Install Rust ${{ env.RUST_VERSION }} + Android targets
+        run: |
+          set -eux
+          if ! command -v rustup >/dev/null; then
+            curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs \
+              | sh -s -- -y --default-toolchain none
+            echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
+          fi
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup target add --toolchain "$RUST_VERSION" \
+            aarch64-linux-android armv7-linux-androideabi x86_64-linux-android
+
+      - name: Write signing config
+        env:
+          JKS_B64: ${{ secrets.ONYM_RELEASE_JKS_B64 }}
+          STORE_PW: ${{ secrets.ONYM_STORE_PASSWORD }}
+          KEY_PW: ${{ secrets.ONYM_KEY_PASSWORD }}
+        run: |
+          set -eu
+          test -n "$JKS_B64" || { echo "::error::ONYM_RELEASE_JKS_B64 secret is empty"; exit 1; }
+          printf '%s' "$JKS_B64" | base64 -d > onym-release.jks
+          umask 077
+          cat > keystore.properties <<EOF
+          storeFile=onym-release.jks
+          storePassword=$STORE_PW
+          keyAlias=onym
+          keyPassword=$KEY_PW
+          EOF
+
+      - name: Assemble release APK
+        run: |
+          ./gradlew --no-daemon -Donym.engine.dir="$engine_dir" :app:assembleRelease
+
+      - name: Scrub signing material
+        if: always()
+        run: rm -f keystore.properties onym-release.jks
+
+      - name: Verify signature
+        run: |
+          set -eux
+          "$ANDROID_SDK_ROOT/build-tools/36.1.0/apksigner" verify --print-certs \
+            app/build/outputs/apk/release/app-release.apk
+          echo "Signed with the onym release key ^" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Attach APK to Forgejo release
+        env:
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -eu
+          apk="app/build/outputs/apk/release/app-release.apk"
+          api="${GITHUB_SERVER_URL}/api/v1/repos/${GITHUB_REPOSITORY}"
+          tag="${GITHUB_REF_NAME}"
+          rid=$(curl -sS -H "Authorization: token $TOKEN" "$api/releases/tags/$tag" \
+            | python3 -c "import json,sys;print(json.load(sys.stdin).get('id',''))" || true)
+          if [ -z "$rid" ]; then
+            rid=$(curl -sS -X POST -H "Authorization: token $TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "{\"tag_name\":\"$tag\",\"name\":\"$tag\"}" "$api/releases" \
+              | python3 -c "import json,sys;print(json.load(sys.stdin)['id'])")
+          fi
+          curl -sS -X POST -H "Authorization: token $TOKEN" \
+            -F "attachment=@$apk" \
+            "$api/releases/$rid/assets?name=onymdroid-$tag.apk" \
+            -o /dev/null -w "asset upload: HTTP %{http_code}\n"

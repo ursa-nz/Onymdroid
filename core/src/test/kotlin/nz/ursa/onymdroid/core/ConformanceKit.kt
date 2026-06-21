@@ -15,8 +15,8 @@ internal fun toQueryForm(input: String): String = input.trim().replace(' ', '_')
  * The onym-engine conformance kit: the owned golden masters the parity test answers to. The kit
  * lives in a sibling checkout (override with `-Donym.conformance=/path`); its fixtures are generated
  * by onym-dump and carry the spec's two deliberate fixes, so the tests diff against the committed
- * fixtures rather than any live tool. Fixtures are written in the dictionary's ISO-8859-1, so they
- * are read the same way.
+ * fixtures rather than any live tool. The database and its fixtures are UTF-8, so they are read the
+ * same way, matching the UTF-8 strings the JNI front returns.
  */
 internal object ConformanceKit {
     private val root: File = File(System.getProperty("onym.conformance", ""))
@@ -28,7 +28,7 @@ internal object ConformanceKit {
     val corpus: List<String>
         get() =
             File(root, "corpus.txt")
-                .readLines(Charsets.ISO_8859_1)
+                .readLines(Charsets.UTF_8)
                 .map { it.trim() }
                 .filter { it.isNotEmpty() && !it.startsWith("#") }
                 .distinct()
@@ -36,7 +36,7 @@ internal object ConformanceKit {
     private fun read(
         kind: String,
         name: String,
-    ): String = File(root, "fixtures/$kind/${toQueryForm(name)}.txt").readText(Charsets.ISO_8859_1)
+    ): String = File(root, "fixtures/$kind/${toQueryForm(name)}.txt").readText(Charsets.UTF_8)
 
     fun dump(word: String): String = read("dump", word)
 

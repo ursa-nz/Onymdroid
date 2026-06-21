@@ -34,12 +34,12 @@ fun main(args: Array<String>) {
     val complete = File(fixtures, "complete").apply { mkdirs() }
     val suggest = File(fixtures, "suggest").apply { mkdirs() }
 
-    // The dictionary files are ISO-8859-1, and the dumper emits their bytes untouched, so the
-    // fixtures are written in the same encoding rather than the platform default.
-    fun File.writeFixture(text: String) = writeBytes(text.toByteArray(Charsets.ISO_8859_1))
+    // The database is UTF-8 and the engine returns UTF-8 strings, so the fixtures are written as
+    // UTF-8 rather than the platform default.
+    fun File.writeFixture(text: String) = writeBytes(text.toByteArray(Charsets.UTF_8))
 
     var dumps = 0
-    corpus.useLines(Charsets.ISO_8859_1) { lines ->
+    corpus.useLines(Charsets.UTF_8) { lines ->
         for (line in lines) {
             val word = line.trim()
             if (word.isEmpty() || word.startsWith("#")) continue

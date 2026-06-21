@@ -24,13 +24,14 @@ fun main(args: Array<String>) {
     val engine = OnymEngine.open(TestWordNet.directory)
     var dumps = 0
     File(args[1]).outputStream().buffered().use { out ->
-        // The dictionary is ISO-8859-1 and the cross-diff compares bytes, so the word list and
-        // the output both use that encoding, never the platform default.
-        words.bufferedReader(Charsets.ISO_8859_1).useLines { lines ->
+        // The database is UTF-8 and the cross-diff compares bytes, so the word list and the output
+        // both use UTF-8, the same encoding onym-dump --batch reads and writes, never the platform
+        // default.
+        words.bufferedReader(Charsets.UTF_8).useLines { lines ->
             for (line in lines) {
                 if (line.isEmpty()) continue
-                out.write("==> $line <==\n".toByteArray(Charsets.ISO_8859_1))
-                out.write(engine.dump(line).toByteArray(Charsets.ISO_8859_1))
+                out.write("==> $line <==\n".toByteArray(Charsets.UTF_8))
+                out.write(engine.dump(line).toByteArray(Charsets.UTF_8))
                 dumps++
                 if (dumps % 10_000 == 0) System.err.println("$dumps words dumped")
             }

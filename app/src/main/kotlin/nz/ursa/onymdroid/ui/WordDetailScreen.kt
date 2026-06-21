@@ -31,6 +31,7 @@ import nz.ursa.onymdroid.ui.components.ChipTones
 import nz.ursa.onymdroid.ui.components.DefinitionList
 import nz.ursa.onymdroid.ui.components.EtymologySection
 import nz.ursa.onymdroid.ui.components.SectionHeader
+import nz.ursa.onymdroid.ui.components.TranslationsSection
 import nz.ursa.onymdroid.ui.components.TreeSection
 import nz.ursa.onymdroid.ui.components.WordChip
 import nz.ursa.onymdroid.ui.components.WordChipSection
@@ -171,6 +172,15 @@ private fun LazyListScope.renderSection(
                 EtymologySection(
                     title = section.title,
                     paragraphs = section.paragraphs,
+                )
+            }
+        }
+
+        is OnymSection.Translations -> {
+            item(key = section.title) {
+                TranslationsSection(
+                    title = section.title,
+                    items = section.items,
                 )
             }
         }

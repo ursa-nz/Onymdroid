@@ -50,6 +50,14 @@ sealed interface OnymSection {
         override val title: String,
         val paragraphs: List<String>,
     ) : OnymSection
+
+    /** Sense translations: one block per looked-up sense, the words other languages use for it
+     *  grouped by language. From the optional overlay, so present only when a resolved sense has an
+     *  entry. */
+    data class Translations internal constructor(
+        override val title: String,
+        val items: List<OnymSenseTranslations>,
+    ) : OnymSection
 }
 
 /** A single activatable term, such as a synonym, in display form. */
@@ -85,3 +93,20 @@ data class OnymTreeNode internal constructor(
 ) {
     val label: String get() = terms.joinToString(", ")
 }
+
+/**
+ * One looked-up sense's translations: the sense's part of speech and gloss, as the definitions
+ * carry them, naming the meaning, and the words other languages use for it grouped by language.
+ */
+data class OnymSenseTranslations internal constructor(
+    val pos: String?,
+    val gloss: String,
+    val languages: List<OnymLanguageWords>,
+)
+
+/** One language's words for a sense: the language's display name and its words, plain display text
+ *  rather than navigable headwords. */
+data class OnymLanguageWords internal constructor(
+    val language: String,
+    val words: List<String>,
+)

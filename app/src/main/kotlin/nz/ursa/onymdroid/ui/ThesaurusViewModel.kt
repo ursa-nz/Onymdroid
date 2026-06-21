@@ -248,6 +248,9 @@ private fun termsToCheck(result: OnymResult): List<String> = buildList {
 
             // Etymology is prose, not navigable terms.
             is OnymSection.Etymology -> {}
+
+            // Translations are foreign words, not English headwords to navigate to.
+            is OnymSection.Translations -> {}
         }
     }
 }

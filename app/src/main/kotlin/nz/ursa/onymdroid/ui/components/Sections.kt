@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import nz.ursa.onymdroid.core.OnymAntonym
+import nz.ursa.onymdroid.core.OnymSenseTranslations
 import nz.ursa.onymdroid.core.OnymTreeNode
 import nz.ursa.onymdroid.core.OnymWord
 
@@ -181,6 +182,76 @@ fun EtymologySection(
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.onSurface,
                             )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The translations section: one block per looked-up sense, the words other languages use for it
+ * grouped by language. Drawn as the same tonal card as the definitions and etymology, each sense
+ * naming its meaning with a dimmed part of speech and gloss, then a line per language. The words are
+ * plain selectable text, not chips, because a foreign word is not an English headword to navigate to.
+ */
+@Composable
+fun TranslationsSection(
+    title: String,
+    items: List<OnymSenseTranslations>,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        SectionHeader(title = title, icon = iconForSection(title))
+        Surface(
+            shape = MaterialTheme.shapes.large,
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            SelectionContainer {
+                Column {
+                    items.forEachIndexed { index, sense ->
+                        if (index > 0) {
+                            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                        }
+                        Column(
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
+                        ) {
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                sense.pos?.let { pos ->
+                                    Text(
+                                        text = pos,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        fontStyle = FontStyle.Italic,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Text(
+                                    text = sense.gloss,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                            sense.languages.forEach { language ->
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.padding(start = 12.dp),
+                                ) {
+                                    Text(
+                                        text = language.language,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                    Text(
+                                        text = language.words.joinToString(", "),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                    )
+                                }
+                            }
                         }
                     }
                 }

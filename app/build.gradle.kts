@@ -176,6 +176,7 @@ val prepareWordnetAssets =
         dataInputs.from(
             onymDataDir.file("base/wndb.tar.zst"),
             onymDataDir.file("overlays/etym.onym"),
+            onymDataDir.file("overlays/omw.onym.zst"),
         )
         outputDir.set(layout.buildDirectory.dir("wordnetAssets"))
     }

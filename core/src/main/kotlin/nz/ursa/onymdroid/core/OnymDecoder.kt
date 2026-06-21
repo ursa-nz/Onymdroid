@@ -50,8 +50,17 @@ internal class OnymDecoder(bytes: ByteArray) {
             2 -> OnymSection.Antonyms(title, List(count()) { antonym() })
             3 -> OnymSection.Tree(title, treeNodes())
             4 -> OnymSection.Etymology(title, stringList())
+            5 -> OnymSection.Translations(title, List(count()) { senseTranslations() })
             else -> error("unknown section kind $kind")
         }
+    }
+
+    // One block per sense: a pos presence byte and string, a gloss, then the per-language word lists.
+    private fun senseTranslations(): OnymSenseTranslations {
+        val pos = if (u8() == 1) string() else null
+        val gloss = string()
+        val languages = List(count()) { OnymLanguageWords(string(), stringList()) }
+        return OnymSenseTranslations(pos, gloss, languages)
     }
 
     private fun definition(): OnymDefinition {

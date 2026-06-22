@@ -95,8 +95,13 @@ These are deliberately absent, not stubbed:
 
 ## Attribution
 
-- Word data from [WordNet](https://wordnet.princeton.edu), the lexical database from
-  Princeton University.
+- Word data from [Open English WordNet](https://en-word.net) 2025, under CC-BY-4.0, with the
+  Princeton WordNet grant preserved.
+- Etymology from [Wiktionary](https://en.wiktionary.org), under CC-BY-SA-3.0, via the
+  [wiktextract](https://kaikki.org) dataset.
+- Translations from the Open Multilingual Wordnet: MultiWordNet (Italian, CC-BY-3.0), Wordnet
+  Bahasa (Indonesian, MIT), and OpenWN-PT (Portuguese, CC-BY-SA-3.0), aligned through the
+  Collaborative Interlingual Index (CC-BY-4.0).
 - The lookup engine is [onym-engine](https://forge.ursa.nz/ursa-nz/onym-engine),
   GPL-3.0-or-later, whose behaviour derives from [Artha](https://github.com/sria91/artha),
   an earlier WordNet thesaurus by Sundaram Ramaswamy; the derivation is recorded in that
@@ -105,8 +110,10 @@ These are deliberately absent, not stubbed:
   [Roboto Flex](https://github.com/googlefonts/roboto-flex) body face, both from the Google
   Fonts project under the SIL Open Font Licence. They are bundled, not fetched at runtime, so
   the app needs no Google Play Services.
-- Built in Narrm on Woiwurrung, Boonwurrung Country, with respect to the Wurundjeri and
-  Bunurong peoples, their languages, and their continuing connection to this Country.
+- Crafted on Kaurna Pangkarra, in Narrm on Woiwurrung and Boonwurrung Country, on Gadigal Country,
+  and in Canberra on Ngunnawal Country, with respect to the Kaurna, Wurundjeri, Bunurong, Gadigal,
+  Dharug, and Ngunnawal peoples, their languages, and their continuing connection to Country. Made
+  by an Arrernte person, sovereign on Arrernte Country.
 
 ## Licence
 

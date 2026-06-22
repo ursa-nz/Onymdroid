@@ -6,18 +6,19 @@ SPDX-License-Identifier: GPL-3.0-or-later
 # Continuous integration
 
 CI runs on the self-hosted Forgejo Actions runner on atutahi (docker mode), defined under
-`.forgejo/workflows/`.
+`.forgejo/workflows/`. The build gate is mirrored to GitHub Actions under `.github/workflows/`;
+release signing stays on Forgejo alone, where the key is held.
 
 ## Workflows
 
 | File | Trigger | Does |
 |------|---------|------|
-| `gate.yml` | PR, push to `main` | Cross-compiles onym-engine for the three ABIs, runs ktlint + `:core` tests, assembles a debug APK. No secrets. |
-| `release.yml` | tag `v*`, manual dispatch | Builds a release-signed APK with the onym app key and attaches it to the tag's Forgejo release. |
+| `gate.yml` | PR, push to `main` | Cross-compiles onym-engine for the three ABIs, runs ktlint + `:core` tests, assembles a debug APK. No secrets. Mirrored on GitHub. |
+| `release.yml` | tag `v*`, manual dispatch | Builds a release-signed APK with the onym app key and attaches it to the tag's Forgejo release. Forgejo only. |
 
-Both jobs pin `container.image: catthehacker/ubuntu:act-22.04` (the runner is registered with
-`ubuntu-latest -> node:22-bookworm`, too slim for this build) and install JDK 21, the Android
-SDK/NDK, and Rust on top, leaning on `actions/cache` so warm runs skip the toolchain installs.
+Both jobs pin `container.image: catthehacker/ubuntu:act-22.04`, then install JDK 21, the Android
+SDK/NDK, and Rust on top, leaning on `actions/cache` so warm runs skip the toolchain installs. They
+check out the `onym-data` submodule, whose `prepare.sh` bundles the WordNet data into the APK.
 
 ## The onym-engine dependency
 

@@ -28,6 +28,14 @@ jobs:
     steps:
       - name: Check out Onymdroid
         uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      # The app bundles the WordNet data by running the onym-data submodule's prepare.sh at build
+      # time, which decompresses the vendored blobs with zstd. The act image generally carries it;
+      # install it if a slimmer image does not.
+      - name: Ensure zstd
+        run: command -v zstd >/dev/null || { apt-get update && apt-get install -y --no-install-recommends zstd; }
 
       - name: Check out onym-engine (latest)
         run: |

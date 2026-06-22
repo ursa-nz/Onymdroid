@@ -85,10 +85,10 @@ fun AboutSettingsRoute(
 }
 
 /**
- * The combined About and Settings screen. It carries the project's attributions — WordNet from
- * Princeton, etymology from Wiktionary, the onym-engine core and its Artha lineage, and the
- * acknowledgement of Country — and
- * the app's single preference: whether relation trees open expanded by default. The preference is
+ * The combined About and Settings screen. It carries the project's attributions: Open English
+ * WordNet, translations from the Open Multilingual Wordnet, etymology from Wiktionary, the
+ * onym-engine core and its Artha lineage, and the acknowledgement of Country. It also holds the
+ * app's single preference: whether relation trees open expanded by default. The preference is
  * persisted in DataStore by the ViewModel.
  */
 @Composable
@@ -137,17 +137,19 @@ fun AboutSettingsScreen(
         SettingsCard {
             Text("About", style = MaterialTheme.typography.titleMedium)
             Attribution(
-                heading = "Built on WordNet",
+                heading = "Built on Open English WordNet",
                 body =
-                    "Word data comes from WordNet, the lexical database from Princeton University. " +
-                        "The bundled database is the patched build maintained by the Debian project.",
+                    "Word data comes from Open English WordNet 2025, under the CC-BY-4.0 licence, " +
+                        "with the Princeton WordNet grant preserved.",
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Attribution(
-                heading = "Engine derived from Artha",
+                heading = "Translations from the Open Multilingual Wordnet",
                 body =
-                    "The lookup engine is onym-engine, a shared Rust core whose behaviour derives " +
-                        "from Artha, an earlier WordNet thesaurus by Sundaram Ramaswamy, under the GPL.",
+                    "Translations come from MultiWordNet for Italian, under CC-BY-3.0; Wordnet " +
+                        "Bahasa for Indonesian, under the MIT licence; and OpenWN-PT for Portuguese, " +
+                        "under CC-BY-SA-3.0. They are aligned through the Collaborative Interlingual " +
+                        "Index, under CC-BY-4.0.",
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Attribution(
@@ -158,10 +160,20 @@ fun AboutSettingsScreen(
             )
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             Attribution(
+                heading = "Engine derived from Artha",
+                body =
+                    "The lookup engine is onym-engine, a shared Rust core whose behaviour derives " +
+                        "from Artha, an earlier WordNet thesaurus by Sundaram Ramaswamy, under the GPL.",
+            )
+            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Attribution(
                 heading = "Acknowledgement of Country",
                 body =
-                    "Built in Narrm on Woiwurrung, Boonwurrung Country, with respect to the Wurundjeri " +
-                        "and Bunurong peoples, their languages, and their continuing connection to this Country.",
+                    "Crafted on Kaurna Pangkarra, in Narrm on Woiwurrung and Boonwurrung Country, on " +
+                        "Gadigal Country, and in Canberra on Ngunnawal Country, with respect to the Kaurna, " +
+                        "Wurundjeri, Bunurong, Gadigal, and Ngunnawal peoples, their languages, and their " +
+                        "continuing connection to Country. Made by an Arrernte person, sovereign on " +
+                        "Arrernte Country.",
             )
         }
 

@@ -190,8 +190,8 @@ android {
         applicationId = "nz.ursa.onymdroid"
         minSdk = 36
         targetSdk = 36
-        versionCode = 6
-        versionName = "0.4.1"
+        versionCode = 7
+        versionName = "0.6.0"
 
         ndk {
             // Package exactly the ABIs the engine is built for; AndroidX would otherwise add a

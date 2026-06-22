@@ -15,6 +15,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    # GitHub runs container `run:` steps under sh by default, where the scripts' `set -o pipefail`
+    # is illegal; the Forgejo runner uses bash. Force bash so both forges run the same shell.
+    defaults:
+      run:
+        shell: bash
     # Pin the same image as the Forgejo gate so the toolchain host is identical on both forges.
     container:
       image: catthehacker/ubuntu:act-22.04

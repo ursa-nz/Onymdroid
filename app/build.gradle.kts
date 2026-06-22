@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2026 ursa.nz <code@ursa.nz>
 // SPDX-License-Identifier: GPL-3.0-or-later
 
+import org.gradle.process.ExecOperations
 import java.util.Properties
 import javax.inject.Inject
-import org.gradle.process.ExecOperations
 
 // The Android application: a Jetpack Compose (Material 3 / Material You) front end over the
 // pure-Kotlin :core engine. Dependencies point inward — this module may see :core, but

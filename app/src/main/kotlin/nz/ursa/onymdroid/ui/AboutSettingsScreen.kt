@@ -171,8 +171,8 @@ fun AboutSettingsScreen(
                 body =
                     "Crafted on Kaurna Pangkarra, in Narrm on Woiwurrung and Boonwurrung Country, on " +
                         "Gadigal Country, and in Canberra on Ngunnawal Country, with respect to the Kaurna, " +
-                        "Wurundjeri, Bunurong, Gadigal, and Ngunnawal peoples, their languages, and their " +
-                        "continuing connection to Country. Made by an Arrernte person, sovereign on " +
+                        "Wurundjeri, Bunurong, Gadigal, Dharug, and Ngunnawal peoples, their languages, and " +
+                        "their continuing connection to Country. Made by an Arrernte person, sovereign on " +
                         "Arrernte Country.",
             )
         }
